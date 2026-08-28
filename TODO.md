@@ -13,3 +13,7 @@
   from expert history, expose the relic model through character policy data for
   opt-agent tuning, and require historical plus combat regression before it
   receives runtime authority.
+- Rework MCTS robust-continuation dominance. It currently lets rare high-quality
+  continuations replace much more reliable root actions. Keep it out of this
+  fix; later either remove the override or restrict it to statistically tied
+  root actions, with the existing Burning Pact regression retained.

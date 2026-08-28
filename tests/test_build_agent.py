@@ -429,6 +429,54 @@ class BuildAgentTests(unittest.TestCase):
         self.assertEqual(decision.command, "choose 1")
         self.assertEqual(decision.source, "build.llm")
 
+    def test_peace_pipe_removes_a_curse_instead_of_smithing(self):
+        state = build_state(
+            "REST",
+            choices=("rest", "smith", "toke"),
+            facts={
+                "act": 3,
+                "current_hp": 21,
+                "max_hp": 35,
+                "deck": (
+                    {"name": "Ascender's Bane", "type": "CURSE"},
+                    {"name": "Regret", "type": "CURSE"},
+                    {"name": "Self Repair", "type": "POWER"},
+                ),
+                "relics": ({"name": "Peace Pipe"},),
+            },
+        )
+        shared = {
+            "run_route": {
+                "planned_rooms": ("Rest", "Monster", "Rest", "Boss"),
+                "encounter_readiness": {
+                    "entry_hp": 21,
+                    "weak_hallways_remaining": 0,
+                    "groups": {"STRONG_HALLWAY": {"status": "AT_RISK"}},
+                },
+                "rest_readiness": {
+                    "entry_hp": 31,
+                    "weak_hallways_remaining": 0,
+                    "groups": {"STRONG_HALLWAY": {"status": "AT_RISK"}},
+                },
+            }
+        }
+        llm = FakeLLM([])
+        agent = create_build_agent(llm)
+
+        toke = agent.decide(request(state, shared=shared))
+
+        self.assertEqual(toke.command, "choose 2")
+        self.assertEqual(toke.source, "build.curse_policy")
+        grid = build_state(
+            "GRID",
+            choices=("Ascender's Bane", "Regret", "Self Repair"),
+            facts=state.facts,
+        )
+        remove = agent.decide(request(grid, toke.continuation.value, shared=shared))
+        self.assertEqual(remove.command, "choose 1")
+        self.assertEqual(remove.source, "build.selection")
+        self.assertEqual(llm.requests, [])
+
     def test_rest_is_forced_when_it_resolves_inconclusive_route(self):
         state = build_state(
             "REST",

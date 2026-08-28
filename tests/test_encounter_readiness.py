@@ -121,6 +121,14 @@ class EncounterReadinessTests(unittest.TestCase):
         self.assertEqual(elites, {1: "Three Sentries"})
         self.assertNotIn("Three Sentries", _groups(1, elites[1])["ELITE"])
 
+    def test_act_three_readiness_includes_hallway_encounters(self):
+        groups = _groups(3)
+
+        self.assertEqual(
+            set(groups), {"WEAK_HALLWAY", "STRONG_HALLWAY", "ELITE"}
+        )
+        self.assertIn("Spire Growth", groups["STRONG_HALLWAY"])
+
     def test_spec_marks_the_bottle_and_removes_potions_from_survival_trials(self):
         state = GameState(
             AgentKind.MAP,

@@ -265,7 +265,7 @@ def _policy_options(
         capable = tuple(
             row
             for row in selected
-            if row["room"] == "R" or int(row["future_rests"]) > 0
+            if row["room"] == "R" or row["rest_reachable"]
         )
         if capable:
             selected = capable
@@ -333,7 +333,10 @@ def _route_has_evidence(act: int, option: Mapping[str, object]) -> bool:
         for row in option.get("forced_segment", ())
         if isinstance(row, Mapping)
     )
-    return any(room in {"E", "E*"} or act == 2 and room == "M" for room in rooms)
+    return any(
+        room in {"E", "E*"} or act in {2, 3} and room == "M"
+        for room in rooms
+    )
 
 
 def _has_safe_rest(option: Mapping[str, object]) -> bool:
@@ -368,7 +371,7 @@ def _route_at_risk(
             combat_evidence_used = False
             continue
         family = "ELITE" if room in {"E", "E*"} else None
-        if act == 2 and room == "M":
+        if act in {2, 3} and room == "M":
             family = "WEAK_HALLWAY" if hallway < weak else "STRONG_HALLWAY"
             hallway += 1
         if room in {"M", "E", "E*"}:
@@ -407,7 +410,7 @@ def _danger_key(
             family = "ELITE"
             break
         if room == "M":
-            if act == 2:
+            if act in {2, 3}:
                 family = (
                     "WEAK_HALLWAY"
                     if int(readiness.get("weak_hallways_remaining") or 0) > 0
@@ -518,7 +521,9 @@ def _route_facts(
             break
         current = live[0]
     result = {
-        "future_rests": sum(nodes[node][0] == "R" for node in reachable if node != root),
+        "rest_reachable": any(
+            nodes[node][0] == "R" for node in reachable if node != root
+        ),
         "burning_elite_reachable": any(nodes[node][0] == "E*" for node in reachable),
         **_route_counts(row["room"] for row in segment),
         "forced_segment": segment,
@@ -586,6 +591,7 @@ def _route_payload(
     return {
         "planned_path": list(path),
         "planned_rooms": rooms,
+        "future_rests": sum(room == "Rest" for room in rooms[1:]),
         **_route_counts(
             next((symbol for symbol, name in _ROOM_NAMES.items() if name == room), room)
             for room in rooms

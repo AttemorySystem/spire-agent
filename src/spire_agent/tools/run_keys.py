@@ -12,6 +12,9 @@ from spire_agent.contracts import DecisionRequest, GameState
 RUN_KEYS_KEY = "run_keys"
 RUN_ROUTE_KEY = "run_route"
 _COLOURS = ("ruby", "emerald", "sapphire")
+_UNREMOVABLE_CURSES = {
+    "ascendersbane", "curseofthebell", "necronomicurse"
+}
 
 
 def initial_keys(state: GameState) -> dict[str, object]:
@@ -118,6 +121,25 @@ def rest_policy(request: DecisionRequest) -> dict[str, Any] | None:
                 "rest before the unresolved "
                 f"{threat['family'].lower().replace('_', ' ')} encounter"
             ),
+        }
+
+    toke = next(
+        (index for index, choice in enumerate(choices) if _normalize(choice) == "toke"),
+        None,
+    )
+    curses = tuple(
+        _choice_label(card)
+        for card in request.state.facts.get("deck") or ()
+        if isinstance(card, Mapping)
+        and _normalize(card.get("type")) == "curse"
+        and _normalize(card.get("name") or card.get("id")) not in _UNREMOVABLE_CURSES
+    )
+    if toke is not None and "peacepipe" in relics and curses:
+        return {
+            "forced_choice_id": toke,
+            "legal_choice_ids": (toke,),
+            "selection_targets": (curses[0],),
+            "reason": f"remove {curses[0]} with Peace Pipe before upgrading",
         }
     if needs_ruby and act < 3:
         return {

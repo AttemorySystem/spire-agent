@@ -604,6 +604,44 @@ class ConcreteMapAgentTests(unittest.TestCase):
         )
         self.assertEqual(len(client.requests), 1)
 
+    def test_future_rests_count_only_the_selected_route(self):
+        state = map_state(
+            choices=("x=0",),
+            nodes=[
+                {
+                    "x": 0,
+                    "y": 0,
+                    "symbol": "M",
+                    "children": [{"x": 0, "y": 1}, {"x": 1, "y": 1}],
+                },
+                {
+                    "x": 0,
+                    "y": 1,
+                    "symbol": "R",
+                    "children": [{"x": 3, "y": 16}],
+                },
+                {
+                    "x": 1,
+                    "y": 1,
+                    "symbol": "$",
+                    "children": [{"x": 3, "y": 16}],
+                },
+            ],
+        )
+        client = FakeLLM(
+            {
+                "choice_id": 0,
+                "path": ["L00C0", "L01C1", "BOSS"],
+                "reason": "take the selected Shop branch",
+            }
+        )
+
+        decision = create_map_agent(client).decide(request(state))
+
+        route = decision.payload["run_route"]
+        self.assertEqual(route["planned_rooms"], ("Monster", "Shop", "Boss"))
+        self.assertEqual(route["future_rests"], 0)
+
     def test_multi_choice_calls_llm_and_maps_id_to_command(self):
         client = FakeLLM(
             {

@@ -112,12 +112,21 @@ def fast_decision(request: DecisionRequest) -> Decision | None:
     if key_rule is not None and key_rule.get("forced_choice_id") is not None:
         choice = int(key_rule["forced_choice_id"])
         acquired = key_rule.get("acquired_key")
+        targets = tuple(
+            str(value) for value in key_rule.get("selection_targets") or ()
+        )
         return Decision(
             f"choose {choice}",
-            "build.key_policy" if acquired else "build.survival_policy",
+            (
+                "build.key_policy" if acquired else
+                "build.curse_policy" if targets else
+                "build.survival_policy"
+            ),
             str(key_rule["reason"]),
+            continuation=_llm_continuation(request, "choose", targets),
             payload={
                 "choice_id": choice,
+                **({"targets": targets} if targets else {}),
                 **({"acquired_key": acquired} if acquired else {}),
             },
         )

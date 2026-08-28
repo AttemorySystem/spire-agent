@@ -34,6 +34,17 @@ _ACT2_STRONG = {
     "Snake Plant": 6 / 29,
     "Centurion And Healer": 6 / 29,
 }
+_ACT3_WEAK = {
+    name: 1 / 3 for name in ("Three Darklings", "Orb Walker", "Three Shapes")
+}
+_ACT3_STRONG = {
+    name: 1 / 8
+    for name in (
+        "Spire Growth", "Transient", "Four Shapes", "Maw",
+        "Sphere And Two Shapes", "Jaw Worm Horde", "Three Darklings",
+        "Writhing Mass",
+    )
+}
 _BOTTLES = {"Bottled Flame", "Bottled Lightning", "Bottled Tornado"}
 _ELITE_ALIASES = {
     "sentry": "Three Sentries",
@@ -114,10 +125,12 @@ class EncounterReadiness:
                 "elite_rotation": rotation,
                 **_summarize(json.loads(completed.stdout), groups, self.minimum_survival),
             }
-            if act == 2:
-                completed_hallways = len(history[0]) + int(
+            if act in {2, 3}:
+                completed_hallways = sum(
+                    room_act == act for room_act, _ in history[0]
+                ) + int(
                     str(state.facts.get("room_type") or "").casefold() == "monsterroom"
-                    and (2, _integer(state.facts.get("floor"))) not in history[0]
+                    and (act, _integer(state.facts.get("floor"))) not in history[0]
                 )
                 result["weak_hallways_remaining"] = max(0, 2 - completed_hallways)
         except Exception as error:
@@ -156,9 +169,13 @@ def _groups(act: int, last_elite: object = None) -> dict[str, Mapping[str, float
         or _ELITES[act]
     )
     elite = {name: 1 / len(possible) for name in possible}
-    if act != 2:
+    if act == 1:
         return {"ELITE": elite}
-    return {"WEAK_HALLWAY": _ACT2_WEAK, "STRONG_HALLWAY": _ACT2_STRONG, "ELITE": elite}
+    weak, strong = (
+        (_ACT2_WEAK, _ACT2_STRONG)
+        if act == 2 else (_ACT3_WEAK, _ACT3_STRONG)
+    )
+    return {"WEAK_HALLWAY": weak, "STRONG_HALLWAY": strong, "ELITE": elite}
 
 
 def _spec(
