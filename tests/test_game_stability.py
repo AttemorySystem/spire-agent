@@ -186,6 +186,37 @@ class GameStabilityToolTests(unittest.TestCase):
         self.assertIs(result, reward)
         self.assertEqual(driver.calls, ["wait 10"])
 
+    def test_smoke_bomb_waits_through_escape_and_battle_ending(self):
+        before = observation(
+            "NONE",
+            phase="COMBAT",
+            commands=("play", "end", "potion", "wait", "state"),
+            combat={
+                "turn": 1,
+                "monsters": [
+                    {"name": "Transient", "current_hp": 999, "move_id": 1}
+                ],
+            },
+            potions=[{"name": "Smoke Bomb"}],
+        )
+        escaping = deepcopy(before)
+        escaping["game_state"]["potions"] = []
+        escaping["game_state"]["transition_pending"] = True
+        escaping["game_state"]["pending_effects"] = ["PlayerEscape"]
+        battle_ending = deepcopy(escaping)
+        battle_ending["game_state"]["pending_effects"] = ["BattleEnding"]
+        reward = observation(
+            "COMBAT_REWARD",
+            commands=("proceed", "wait", "state"),
+            potions=[],
+        )
+        driver = Driver(deepcopy(escaping), battle_ending, reward)
+
+        result = self.settle(before, escaping, "potion use 0", driver)
+
+        self.assertIs(result, reward)
+        self.assertEqual(driver.calls, ["wait 10", "wait 10", "wait 10"])
+
     def test_terminal_state_needs_no_barrier_or_ready_signal(self):
         before = observation(
             "NONE",

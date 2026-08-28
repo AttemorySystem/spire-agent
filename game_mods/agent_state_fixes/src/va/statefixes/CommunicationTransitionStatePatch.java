@@ -6,6 +6,7 @@ import com.megacrit.cardcrawl.actions.GameActionManager;
 import com.megacrit.cardcrawl.cards.SoulGroup;
 import com.megacrit.cardcrawl.dungeons.AbstractDungeon;
 import com.megacrit.cardcrawl.events.AbstractEvent;
+import com.megacrit.cardcrawl.rooms.AbstractRoom;
 import com.megacrit.cardcrawl.vfx.AbstractGameEffect;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
@@ -110,10 +111,21 @@ public final class CommunicationTransitionStatePatch {
         if (animationPending) {
             effectNames.add("EventAnimation");
         }
-        if (
-            AbstractDungeon.getCurrRoom() != null && SoulGroup.isActive()
-        ) {
+        AbstractRoom room = AbstractDungeon.getCurrRoom();
+        if (room != null && SoulGroup.isActive()) {
             effectNames.add("CardMovement");
+        }
+        if (
+            AbstractDungeon.player != null &&
+            AbstractDungeon.player.isEscaping
+        ) {
+            effectNames.add("PlayerEscape");
+        }
+        if (
+            room != null && room.isBattleOver &&
+            room.phase == AbstractRoom.RoomPhase.COMBAT
+        ) {
+            effectNames.add("BattleEnding");
         }
 
         __result.put(

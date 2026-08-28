@@ -41,9 +41,9 @@ It currently adds:
 - `transition_pending` and diagnostics for queued permanent-state effects, so
   live runs and replay do not advance past an event while a selected card,
   potion, key, or other persistent result is still being committed. Decorative
-  effects such as speech bubbles do not block decisions; card movement and The
-  Joust and Match and Keep timed animations do because their completion can
-  change game state.
+  effects such as speech bubbles do not block decisions; card movement, timed
+  event animations, player escape, and battle completion do because their
+  completion can change game state.
 - discard-to-hand cost overrides remain atomic across bridge frames, so effects
   such as Liquid Memories keep their temporary cost in live play and replay.
 
