@@ -1,0 +1,73 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "spire-agent"
+version = "0.1.0"
+description = "An autonomous Slay the Spire agent."
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+authors = [{ name = "Lance Fang" }]
+dependencies = [
+    "gymnasium>=1.0,<2",
+    "numpy>=2,<3",
+    "openai>=1,<3",
+    "pydantic>=2,<3",
+    "PyYAML>=6,<7",
+]
+
+[project.urls]
+Repository = "https://github.com/AttemorySystem/spire-agent"
+Issues = "https://github.com/AttemorySystem/spire-agent/issues"
+
+[project.scripts]
+spire-agent = "spire_agent.run_agent:main"
+sts-llm-log = "spire_agent.utils.llm_log:main"
+sts-winning-path-log = "spire_agent.utils.winning_path_log:main"
+sts-winning-path-build = "spire_agent.tools.winning_path.catalog:main"
+sts-card-reward-dataset = "spire_agent.tools.winning_path.dataset:main"
+sts-card-reward-eval = "spire_agent.tools.winning_path.evaluation:main"
+sts-card-choice-compare = "spire_agent.utils.card_choices:main"
+sts-winning-path-combat-eval = "spire_agent.tools.winning_path.combat_eval:main"
+sts-winning-path-run-report = "spire_agent.tools.winning_path.run_report:main"
+
+[tool.setuptools]
+packages = [
+    "spire_agent",
+    "spire_agent.adapters",
+    "spire_agent.extensions",
+    "spire_agent.subagents",
+    "spire_agent.tools",
+    "spire_agent.tools.map",
+    "spire_agent.tools.mcts",
+    "spire_agent.tools.winning_path",
+    "spire_agent.utils",
+    "gym_sts",
+    "gym_sts.communication",
+    "gym_sts.data",
+    "gym_sts.envs",
+    "gym_sts.spaces",
+    "gym_sts.spaces.constants",
+    "gym_sts.spaces.observations",
+    "gym_sts.spaces.observations.components",
+    "gym_sts.spaces.observations.types",
+]
+package-dir = {"" = "src", gym_sts = "3rd/gym-sts/gym_sts"}
+
+[tool.setuptools.package-data]
+spire_agent = [
+    "subagents/prompts/build/*.toml",
+    "subagents/prompts/map/*.txt",
+    "tools/data/*.csv",
+    "tools/winning_path/data/*.json",
+]
+gym_sts = [
+    "build/*",
+    "build/preferences/*",
+    "data/*.json",
+]
+
+[tool.uv]
+package = true

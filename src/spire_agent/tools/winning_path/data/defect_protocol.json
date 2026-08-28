@@ -1,0 +1,7 @@
+{
+  "schema_version": 1,
+  "protocol_version": "2.3.0",
+  "policy_id": "defect.winning_path",
+  "scope": {"character": "DEFECT", "screen": "CARD_REWARD"},
+  "policy_file": "data/defect_policy.json"
+}

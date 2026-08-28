@@ -1,0 +1,10 @@
+{
+  "modid": "agentvisualizer",
+  "name": "Agent Visualizer",
+  "author_list": ["Slay the Spire Agent"],
+  "description": "Shows route, deck, build strategy, MCTS results, and confirmed actions in game.",
+  "version": "0.2.0",
+  "sts_version": "12-18-2022",
+  "mts_version": "3.30.0",
+  "dependencies": ["basemod"]
+}

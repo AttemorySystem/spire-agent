@@ -1,0 +1,7 @@
+{
+  "schema_version": 1,
+  "protocol_version": "2.3.0",
+  "policy_id": "ironclad.winning_path",
+  "scope": {"character": "IRONCLAD", "screen": "CARD_REWARD"},
+  "policy_file": "data/ironclad_policy.json"
+}

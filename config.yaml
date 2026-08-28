@@ -1,0 +1,45 @@
+# Prompt language: en or zh.
+prompt_language: en
+
+# Agent implementations. Available values are listed on each line.
+agents:
+  map: llm              # llm
+  build: winning_path   # winning_path | llm
+  combat: mcts          # mcts | llm
+
+run:
+  character: IRONCLAD  # IRONCLAD | DEFECT
+  ascension: 20        # 0..20
+  seed: random         # random, a decimal gym seed, or an exact game seed
+
+  # WIDTHxHEIGHT or fullscreen.
+  # 1024x576, 1280x720, 1600x900, 1920x1080, ...
+  window_size: 1600x900
+
+  # Load AgentVisualizer and write its replayable HUD data.
+  hud: false
+
+# Runtime files and native executables. Relative paths start at this file.
+paths:
+  runtime_dir: runtime  # game lib, mods, temporary files, and bridge output
+  log_dir: .            # runs are written below <log_dir>/runs/
+  mcts_binary: 3rd/sts_lightspeed/build/battle-sim
+  card_eval_binary: 3rd/sts_lightspeed/build/card-reward-eval
+
+# OpenAI-compatible endpoint. Empty values use MODEL_URL and MODEL.
+# Keep API_KEY in the environment; do not put it in this file.
+llm:
+  base_url:
+  model:
+
+# Seconds to wait for each game-bridge response.
+communication:
+  timeout: 5.0
+
+# Combat search budgets.
+mcts:
+  simulations: 100000          # normal search simulation limit
+  threads: 12                  # parallel MCTS workers
+  max_time_ms: 10000           # normal search time limit
+  adaptive_time_ms: 30000      # difficult-state time limit
+  adaptive_simulations: 500000 # difficult-state simulation limit

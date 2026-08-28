@@ -1,0 +1,8 @@
+[submodule "3rd/gym-sts"]
+	path = 3rd/gym-sts
+	url = https://github.com/Attemory/gym-sts.git
+	shallow = true
+[submodule "3rd/sts_lightspeed"]
+	path = 3rd/sts_lightspeed
+	url = https://github.com/Attemory/sts_lightspeed.git
+	shallow = true

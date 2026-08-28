@@ -1,0 +1,1829 @@
+{
+  "schema_version": 1,
+  "protocol_version": "2.3.0",
+  "policy_id": "defect.winning_path",
+  "scope": {
+    "character": "DEFECT",
+    "screen": "CARD_REWARD"
+  },
+  "templates": {
+    "distance": {
+      "algorithm": "MODULE_LEXICOGRAPHIC_V1",
+      "future_choices": "defect_catalog.derived.horizons",
+      "offer_probability": "defect_catalog.derived.offer_rates",
+      "progress_order": [
+        "template level",
+        "completed core gain",
+        "anchor reduction",
+        "missing card reduction",
+        "completion probability"
+      ],
+      "state_order": [
+        "missing required slots",
+        "negative completion probability",
+        "negative completed modules"
+      ]
+    },
+    "knowledge": {
+      "bridges": [],
+      "candidate_bridges": [],
+      "card_policies": [
+        {
+          "acts": [
+            2,
+            3,
+            4
+          ],
+          "card": "Genetic Algorithm",
+          "policy": "FORBID",
+          "reason": "Late copies lack enough combats to grow into reliable scaling block."
+        }
+      ],
+      "conditional_cards": [
+        {
+          "name": "Reprogram",
+          "requires_any_owned": [
+            "Barrage",
+            "Beam Cell",
+            "Claw",
+            "Go for the Eyes",
+            "Hyperbeam",
+            "Rip and Tear",
+            "Streamline"
+          ]
+        },
+        {
+          "name": "Consume",
+          "requires_any_owned": [
+            "Ball Lightning",
+            "Chaos",
+            "Chill",
+            "Cold Snap",
+            "Coolheaded",
+            "Darkness",
+            "Doom and Gloom",
+            "Electrodynamics",
+            "Fusion",
+            "Glacier",
+            "Rainbow",
+            "Static Discharge",
+            "Storm",
+            "Tempest"
+          ]
+        }
+      ],
+      "dominant_cards": [
+        {
+          "acts": [
+            1
+          ],
+          "maximum_owned": 0,
+          "name": "Apotheosis",
+          "reason": "Act 1 decks retain substantial upgrade debt"
+        },
+        {
+          "acts": [
+            1,
+            2,
+            3
+          ],
+          "maximum_owned": 0,
+          "name": "Biased Cognition",
+          "reason": "expert history strongly favors the first scaling Focus source"
+        },
+        {
+          "acts": [
+            1,
+            2,
+            3
+          ],
+          "maximum_owned": 0,
+          "name": "Buffer",
+          "reason": "expert history strongly favors the first damage-negation power"
+        },
+        {
+          "acts": [
+            1,
+            2,
+            3
+          ],
+          "maximum_owned": 0,
+          "name": "Echo Form",
+          "reason": "expert history strongly favors the first action-multiplication power"
+        },
+        {
+          "acts": [
+            1,
+            2
+          ],
+          "maximum_owned": 0,
+          "name": "Electrodynamics",
+          "reason": "expert history strongly favors early reliable AOE"
+        },
+        {
+          "acts": [
+            1,
+            2,
+            3,
+            4
+          ],
+          "maximum_owned": 0,
+          "name": "Glacier",
+          "reason": "expert history strongly favors the first dense Frost block card"
+        },
+        {
+          "acts": [
+            1,
+            2,
+            3,
+            4
+          ],
+          "maximum_owned": 0,
+          "name": "Seek",
+          "reason": "expert history strongly favors the first unrestricted tutor"
+        }
+      ],
+      "forbidden_cards": [],
+      "graph_scope": {
+        "character": "DEFECT"
+      },
+      "graph_semantics": {
+        "interpretation": "Small mechanistic templates reviewed against A20 Heart-winning expert decks. A template is evidence of construction progress, not a complete deck recipe or a card score."
+      },
+      "modules": [
+        {
+          "activation": {
+            "anchor_slots": [
+              "anchor"
+            ],
+            "requires_capabilities": [],
+            "slots": [
+              {
+                "group": {
+                  "cards": [
+                    "Darkness",
+                    "Doom and Gloom"
+                  ],
+                  "minimum_distinct": 1,
+                  "minimum_total_copies": 1
+                },
+                "id": "anchor",
+                "required": true
+              },
+              {
+                "group": {
+                  "cards": [
+                    "Dualcast",
+                    "Recursion",
+                    "Multi-Cast",
+                    "Loop"
+                  ],
+                  "minimum_distinct": 1,
+                  "minimum_total_copies": 1
+                },
+                "id": "control",
+                "required": true
+              }
+            ]
+          },
+          "aspect": "OFFENSE",
+          "candidate_policy": "COMPATIBLE_ONLY",
+          "dynamic_verification": false,
+          "energy": {
+            "constraints": [],
+            "mode": "NORMAL",
+            "sources": []
+          },
+          "evidence_templates": [],
+          "exit_conditions": [],
+          "goals": [],
+          "hard_resource_constraints": {
+            "focus_direction": "PRESERVE"
+          },
+          "mechanism": "Generate a Dark orb and retain enough orb control to evoke it at useful damage.",
+          "module_id": "dark_orb_control",
+          "name": "Dark orb control",
+          "phase": "BUILDING",
+          "provides": [
+            {
+              "aspect": "OFFENSE",
+              "capability": "SCALING_DAMAGE"
+            }
+          ],
+          "soft_resource_pressures": []
+        },
+        {
+          "activation": {
+            "anchor_slots": [
+              "anchor",
+              "frost"
+            ],
+            "requires_capabilities": [],
+            "slots": [
+              {
+                "any": [
+                  {
+                    "group": {
+                      "cards": [
+                        "Defragment",
+                        "Biased Cognition",
+                        "Consume"
+                      ],
+                      "minimum_distinct": 1,
+                      "minimum_total_copies": 1
+                    }
+                  },
+                  {
+                    "all": [
+                      {
+                        "kind": "RELIC",
+                        "name": "Data Disk"
+                      }
+                    ]
+                  }
+                ],
+                "id": "anchor",
+                "required": true
+              },
+              {
+                "group": {
+                  "cards": [
+                    "Glacier",
+                    "Cold Snap",
+                    "Coolheaded",
+                    "Chill"
+                  ],
+                  "minimum_distinct": 2,
+                  "minimum_total_copies": 2
+                },
+                "id": "frost",
+                "required": true
+              }
+            ]
+          },
+          "aspect": "DEFENSE",
+          "candidate_policy": "COMPATIBLE_ONLY",
+          "dynamic_verification": false,
+          "energy": {
+            "constraints": [],
+            "mode": "NORMAL",
+            "sources": []
+          },
+          "evidence_templates": [],
+          "exit_conditions": [],
+          "goals": [],
+          "hard_resource_constraints": {
+            "focus_direction": "PRESERVE"
+          },
+          "mechanism": "Scale repeated Frost generation with Focus for long-fight block.",
+          "module_id": "focus_frost",
+          "name": "Focus and Frost defense",
+          "phase": "BUILDING",
+          "provides": [
+            {
+              "aspect": "DEFENSE",
+              "capability": "SCALING_DEFENSE"
+            },
+            {
+              "aspect": "DEFENSE",
+              "capability": "SCALING_DAMAGE"
+            }
+          ],
+          "soft_resource_pressures": []
+        },
+        {
+          "activation": {
+            "anchor_slots": [
+              "anchor"
+            ],
+            "requires_capabilities": [],
+            "slots": [
+              {
+                "group": {
+                  "cards": [
+                    "Blizzard"
+                  ],
+                  "minimum_distinct": 1,
+                  "minimum_total_copies": 1
+                },
+                "id": "anchor",
+                "required": true
+              },
+              {
+                "group": {
+                  "cards": [
+                    "Glacier",
+                    "Cold Snap",
+                    "Coolheaded",
+                    "Chill"
+                  ],
+                  "minimum_distinct": 2,
+                  "minimum_total_copies": 5
+                },
+                "id": "frost_depth",
+                "required": true
+              },
+              {
+                "group": {
+                  "cards": [
+                    "Machine Learning",
+                    "Reboot",
+                    "Fission",
+                    "Skim",
+                    "Coolheaded",
+                    "Compile Driver",
+                    "Heatsinks",
+                    "Seek",
+                    "Overclock"
+                  ],
+                  "minimum_distinct": 2,
+                  "minimum_total_copies": 4
+                },
+                "id": "cycle_depth",
+                "required": true
+              }
+            ]
+          },
+          "aspect": "OFFENSE",
+          "candidate_policy": "COMPATIBLE_ONLY",
+          "dynamic_verification": false,
+          "energy": {
+            "constraints": [],
+            "mode": "NORMAL",
+            "sources": []
+          },
+          "evidence_templates": [],
+          "exit_conditions": [],
+          "goals": [],
+          "hard_resource_constraints": {
+            "focus_direction": "PRESERVE"
+          },
+          "mechanism": "Cycle repeated Frost generation into reliable Blizzard damage.",
+          "module_id": "blizzard_frost_cycle",
+          "name": "Blizzard Frost cycle",
+          "bottleneck_requires_prerequisites": true,
+          "phase": "BUILDING",
+          "provides": [
+            {
+              "aspect": "OFFENSE",
+              "capability": "SCALING_DAMAGE"
+            },
+            {
+              "aspect": "ENGINE",
+              "capability": "DRAW_CONSISTENCY"
+            }
+          ],
+          "soft_resource_pressures": []
+        },
+        {
+          "activation": {
+            "anchor_slots": [
+              "focus",
+              "frost"
+            ],
+            "requires_capabilities": [],
+            "slots": [
+              {
+                "group": {
+                  "cards": [
+                    "Defragment",
+                    "Biased Cognition",
+                    "Consume"
+                  ],
+                  "minimum_distinct": 1,
+                  "minimum_total_copies": 1
+                },
+                "id": "focus",
+                "required": true
+              },
+              {
+                "group": {
+                  "cards": [
+                    "Glacier",
+                    "Cold Snap",
+                    "Coolheaded",
+                    "Chill"
+                  ],
+                  "minimum_distinct": 2,
+                  "minimum_total_copies": 2
+                },
+                "id": "frost",
+                "required": true
+              },
+              {
+                "group": {
+                  "cards": [
+                    "Defragment",
+                    "Biased Cognition",
+                    "Consume"
+                  ],
+                  "minimum_distinct": 1,
+                  "minimum_total_copies": 2
+                },
+                "id": "depth",
+                "required": true
+              }
+            ]
+          },
+          "aspect": "DEFENSE",
+          "candidate_policy": "COMPATIBLE_ONLY",
+          "dynamic_verification": false,
+          "energy": {
+            "constraints": [],
+            "mode": "NORMAL",
+            "sources": []
+          },
+          "evidence_templates": [],
+          "exit_conditions": [],
+          "goals": [],
+          "hard_resource_constraints": {
+            "focus_direction": "PRESERVE"
+          },
+          "mechanism": "Add a second Focus source after Frost generation is established.",
+          "module_id": "focus_depth",
+          "name": "Focus depth",
+          "phase": "BUILDING",
+          "provides": [
+            {
+              "aspect": "DEFENSE",
+              "capability": "SCALING_DEFENSE"
+            }
+          ],
+          "soft_resource_pressures": []
+        },
+        {
+          "activation": {
+            "anchor_slots": [
+              "anchor"
+            ],
+            "requires_capabilities": [],
+            "slots": [
+              {
+                "group": {
+                  "cards": [
+                    "Electrodynamics"
+                  ],
+                  "minimum_distinct": 1,
+                  "minimum_total_copies": 1
+                },
+                "id": "anchor",
+                "required": true
+              },
+              {
+                "group": {
+                  "cards": [
+                    "Ball Lightning",
+                    "Static Discharge",
+                    "Storm",
+                    "Tempest",
+                    "Thunder Strike"
+                  ],
+                  "minimum_distinct": 1,
+                  "minimum_total_copies": 1
+                },
+                "id": "lightning",
+                "required": true
+              }
+            ]
+          },
+          "aspect": "OFFENSE",
+          "candidate_policy": "COMPATIBLE_ONLY",
+          "dynamic_verification": false,
+          "energy": {
+            "constraints": [],
+            "mode": "NORMAL",
+            "sources": []
+          },
+          "evidence_templates": [],
+          "exit_conditions": [],
+          "goals": [],
+          "hard_resource_constraints": {
+            "focus_direction": "PRESERVE"
+          },
+          "mechanism": "Convert repeatable Lightning generation into reliable multi-target damage.",
+          "module_id": "lightning_aoe",
+          "name": "Electrodynamics lightning",
+          "phase": "BUILDING",
+          "provides": [
+            {
+              "aspect": "OFFENSE",
+              "capability": "AOE"
+            },
+            {
+              "aspect": "OFFENSE",
+              "capability": "SCALING_DAMAGE"
+            }
+          ],
+          "soft_resource_pressures": []
+        },
+        {
+          "activation": {
+            "anchor_slots": [
+              "anchor"
+            ],
+            "requires_capabilities": [],
+            "slots": [
+              {
+                "group": {
+                  "cards": [
+                    "Echo Form",
+                    "Creative AI"
+                  ],
+                  "minimum_distinct": 1,
+                  "minimum_total_copies": 1
+                },
+                "id": "anchor",
+                "required": true
+              },
+              {
+                "group": {
+                  "cards": [
+                    "Buffer",
+                    "Defragment",
+                    "Biased Cognition",
+                    "Heatsinks",
+                    "Loop",
+                    "Self Repair",
+                    "Static Discharge",
+                    "Storm"
+                  ],
+                  "minimum_distinct": 2,
+                  "minimum_total_copies": 2
+                },
+                "id": "powers",
+                "required": true
+              }
+            ]
+          },
+          "aspect": "ENGINE",
+          "candidate_policy": "COMPATIBLE_ONLY",
+          "dynamic_verification": false,
+          "energy": {
+            "constraints": [],
+            "mode": "NORMAL",
+            "sources": []
+          },
+          "evidence_templates": [],
+          "exit_conditions": [],
+          "goals": [],
+          "hard_resource_constraints": {},
+          "mechanism": "Use Echo Form or Creative AI to multiply a sufficiently dense set of useful powers.",
+          "module_id": "power_engine",
+          "name": "Power engine",
+          "phase": "BUILDING",
+          "provides": [
+            {
+              "aspect": "ENGINE",
+              "capability": "SCALING_DAMAGE"
+            },
+            {
+              "aspect": "ENGINE",
+              "capability": "SCALING_DEFENSE"
+            }
+          ],
+          "soft_resource_pressures": []
+        },
+        {
+          "activation": {
+            "anchor_slots": [
+              "anchor"
+            ],
+            "requires_capabilities": [],
+            "slots": [
+              {
+                "group": {
+                  "cards": [
+                    "Recycle"
+                  ],
+                  "minimum_distinct": 1,
+                  "minimum_total_copies": 1
+                },
+                "id": "anchor",
+                "required": true
+              },
+              {
+                "group": {
+                  "cards": [
+                    "Meteor Strike",
+                    "TURBO",
+                    "Double Energy",
+                    "Aggregate",
+                    "Fusion"
+                  ],
+                  "minimum_distinct": 1,
+                  "minimum_total_copies": 1
+                },
+                "id": "energy",
+                "required": true
+              },
+              {
+                "group": {
+                  "cards": [
+                    "Hologram",
+                    "Seek",
+                    "Skim",
+                    "Coolheaded",
+                    "Compile Driver",
+                    "Overclock"
+                  ],
+                  "minimum_distinct": 1,
+                  "minimum_total_copies": 1
+                },
+                "id": "access",
+                "required": true
+              }
+            ]
+          },
+          "aspect": "ENGINE",
+          "candidate_policy": "COMPATIBLE_ONLY",
+          "dynamic_verification": false,
+          "energy": {
+            "constraints": [],
+            "mode": "NORMAL",
+            "sources": []
+          },
+          "evidence_templates": [],
+          "exit_conditions": [],
+          "goals": [],
+          "hard_resource_constraints": {},
+          "mechanism": "Recycle expensive or temporary energy assets while draw and retrieval keep the deck moving.",
+          "module_id": "recycle_energy_loop",
+          "name": "Recycle energy loop",
+          "phase": "BUILDING",
+          "provides": [
+            {
+              "aspect": "ENGINE",
+              "capability": "ENERGY"
+            },
+            {
+              "aspect": "ENGINE",
+              "capability": "DRAW_CONSISTENCY"
+            }
+          ],
+          "soft_resource_pressures": []
+        },
+        {
+          "activation": {
+            "anchor_slots": [
+              "anchor"
+            ],
+            "requires_capabilities": [],
+            "slots": [
+              {
+                "group": {
+                  "cards": [
+                    "Reprogram"
+                  ],
+                  "minimum_distinct": 1,
+                  "minimum_total_copies": 1
+                },
+                "id": "anchor",
+                "required": true
+              },
+              {
+                "group": {
+                  "cards": [
+                    "Beam Cell",
+                    "Claw",
+                    "Go for the Eyes",
+                    "Streamline",
+                    "Hyperbeam",
+                    "Barrage",
+                    "Rip and Tear"
+                  ],
+                  "minimum_distinct": 2,
+                  "minimum_total_copies": 2
+                },
+                "id": "physical",
+                "required": true
+              }
+            ]
+          },
+          "aspect": "OFFENSE",
+          "candidate_policy": "COMPATIBLE_ONLY",
+          "dynamic_verification": false,
+          "energy": {
+            "constraints": [],
+            "mode": "NORMAL",
+            "sources": []
+          },
+          "evidence_templates": [],
+          "exit_conditions": [],
+          "goals": [],
+          "hard_resource_constraints": {
+            "focus_direction": "REDUCE"
+          },
+          "mechanism": "Trade orb scaling for repeatable Strength, Dexterity, and efficient physical cards.",
+          "module_id": "reprogram_physical",
+          "name": "Reprogram physical scaling",
+          "phase": "BUILDING",
+          "provides": [
+            {
+              "aspect": "OFFENSE",
+              "capability": "SCALING_DAMAGE"
+            },
+            {
+              "aspect": "OFFENSE",
+              "capability": "SCALING_DEFENSE"
+            }
+          ],
+          "soft_resource_pressures": []
+        },
+        {
+          "activation": {
+            "anchor_slots": [
+              "anchor"
+            ],
+            "requires_capabilities": [],
+            "slots": [
+              {
+                "group": {
+                  "cards": [
+                    "All for One"
+                  ],
+                  "minimum_distinct": 1,
+                  "minimum_total_copies": 1
+                },
+                "id": "anchor",
+                "required": true
+              },
+              {
+                "group": {
+                  "cards": [
+                    "Claw",
+                    "Beam Cell",
+                    "Go for the Eyes",
+                    "FTL",
+                    "TURBO"
+                  ],
+                  "minimum_distinct": 2,
+                  "minimum_total_copies": 2
+                },
+                "id": "zero_cost",
+                "required": true
+              },
+              {
+                "group": {
+                  "cards": [
+                    "Hologram",
+                    "Scrape",
+                    "Seek"
+                  ],
+                  "minimum_distinct": 1,
+                  "minimum_total_copies": 1
+                },
+                "id": "access",
+                "required": true
+              }
+            ]
+          },
+          "aspect": "ENGINE",
+          "candidate_policy": "COMPATIBLE_ONLY",
+          "dynamic_verification": false,
+          "energy": {
+            "constraints": [],
+            "mode": "NORMAL",
+            "sources": []
+          },
+          "evidence_templates": [],
+          "exit_conditions": [],
+          "goals": [],
+          "hard_resource_constraints": {},
+          "mechanism": "Recover a useful density of zero-cost cards with All for One and targeted access.",
+          "module_id": "zero_cost_recursion",
+          "name": "All for One recursion",
+          "phase": "BUILDING",
+          "provides": [
+            {
+              "aspect": "ENGINE",
+              "capability": "SCALING_DAMAGE"
+            },
+            {
+              "aspect": "ENGINE",
+              "capability": "DRAW_CONSISTENCY"
+            }
+          ],
+          "soft_resource_pressures": []
+        },
+        {
+          "activation": {
+            "anchor_slots": ["anchor"],
+            "requires_capabilities": [],
+            "slots": [
+              {
+                "group": {
+                  "cards": ["Core Surge"],
+                  "minimum_distinct": 1,
+                  "minimum_total_copies": 1
+                },
+                "id": "anchor",
+                "required": true
+              },
+              {
+                "group": {
+                  "cards": ["Biased Cognition"],
+                  "minimum_distinct": 1,
+                  "minimum_total_copies": 1
+                },
+                "id": "focus",
+                "required": true
+              }
+            ]
+          },
+          "aspect": "ENGINE",
+          "candidate_policy": "COMPATIBLE_ONLY",
+          "dynamic_verification": false,
+          "energy": {"constraints": [], "mode": "NORMAL", "sources": []},
+          "evidence_templates": [],
+          "exit_conditions": [],
+          "goals": [],
+          "hard_resource_constraints": {},
+          "mechanism": "Preserve Biased Cognition Focus with Artifact from Core Surge.",
+          "module_id": "artifact_focus",
+          "name": "Artifact-supported Focus",
+          "phase": "BUILDING",
+          "provides": [
+            {"aspect": "ENGINE", "capability": "SCALING_DAMAGE"},
+            {"aspect": "ENGINE", "capability": "SCALING_DEFENSE"}
+          ],
+          "soft_resource_pressures": []
+        },
+        {
+          "activation": {
+            "anchor_slots": ["anchor"],
+            "requires_capabilities": [],
+            "slots": [
+              {
+                "group": {
+                  "cards": ["Capacitor"],
+                  "minimum_distinct": 1,
+                  "minimum_total_copies": 1
+                },
+                "id": "anchor",
+                "required": true
+              },
+              {
+                "group": {
+                  "cards": ["Barrage", "Consume", "Loop", "Rainbow"],
+                  "minimum_distinct": 1,
+                  "minimum_total_copies": 1
+                },
+                "id": "payoff",
+                "required": true
+              }
+            ]
+          },
+          "aspect": "ENGINE",
+          "candidate_policy": "ADVISORY_ONLY",
+          "dynamic_verification": false,
+          "energy": {"constraints": [], "mode": "NORMAL", "sources": []},
+          "evidence_templates": [],
+          "exit_conditions": [],
+          "goals": [],
+          "hard_resource_constraints": {
+            "focus_direction": "PRESERVE"
+          },
+          "mechanism": "Turn additional orb slots into repeated passive, evocation, or Barrage value.",
+          "module_id": "orb_capacity_scaling",
+          "name": "Orb capacity scaling",
+          "phase": "BUILDING",
+          "provides": [
+            {"aspect": "ENGINE", "capability": "SCALING_DAMAGE"},
+            {"aspect": "ENGINE", "capability": "SCALING_DEFENSE"}
+          ],
+          "soft_resource_pressures": []
+        },
+        {
+          "activation": {
+            "anchor_slots": ["anchor"],
+            "requires_capabilities": [],
+            "slots": [
+              {
+                "group": {
+                  "cards": ["Genetic Algorithm"],
+                  "minimum_distinct": 1,
+                  "minimum_total_copies": 1
+                },
+                "id": "anchor",
+                "required": true
+              },
+              {
+                "group": {
+                  "cards": ["Hologram", "Echo Form"],
+                  "minimum_distinct": 1,
+                  "minimum_total_copies": 1
+                },
+                "id": "reuse",
+                "required": true
+              }
+            ]
+          },
+          "aspect": "DEFENSE",
+          "candidate_policy": "ADVISORY_ONLY",
+          "dynamic_verification": true,
+          "energy": {"constraints": [], "mode": "NORMAL", "sources": []},
+          "evidence_templates": [],
+          "exit_conditions": [],
+          "goals": [],
+          "hard_resource_constraints": {},
+          "mechanism": "Grow Genetic Algorithm and replay or duplicate it for decisive block turns.",
+          "module_id": "genetic_scaling_block",
+          "name": "Genetic Algorithm scaling block",
+          "phase": "BUILDING",
+          "provides": [
+            {"aspect": "DEFENSE", "capability": "SCALING_DEFENSE"}
+          ],
+          "soft_resource_pressures": []
+        },
+        {
+          "activation": {
+            "anchor_slots": ["anchor"],
+            "requires_capabilities": [],
+            "slots": [
+              {
+                "group": {
+                  "cards": ["Machine Learning", "Reboot", "Fission"],
+                  "minimum_distinct": 1,
+                  "minimum_total_copies": 1
+                },
+                "id": "anchor",
+                "required": true
+              },
+              {
+                "group": {
+                  "cards": [
+                    "Skim", "Coolheaded", "Compile Driver", "Heatsinks",
+                    "Hologram", "Seek", "Equilibrium"
+                  ],
+                  "minimum_distinct": 2,
+                  "minimum_total_copies": 2
+                },
+                "id": "access",
+                "required": true
+              }
+            ]
+          },
+          "aspect": "ENGINE",
+          "candidate_policy": "ADVISORY_ONLY",
+          "dynamic_verification": false,
+          "energy": {"constraints": [], "mode": "NORMAL", "sources": []},
+          "evidence_templates": [],
+          "exit_conditions": [],
+          "goals": [],
+          "hard_resource_constraints": {},
+          "mechanism": "Combine persistent or burst draw with enough card access to cycle the deck reliably.",
+          "module_id": "draw_cycle_engine",
+          "name": "Draw and card-access engine",
+          "phase": "BUILDING",
+          "provides": [
+            {"aspect": "ENGINE", "capability": "DRAW_CONSISTENCY"}
+          ],
+          "soft_resource_pressures": []
+        },
+        {
+          "activation": {
+            "anchor_slots": ["anchor"],
+            "requires_capabilities": [],
+            "slots": [
+              {
+                "group": {
+                  "cards": ["Buffer"],
+                  "minimum_distinct": 1,
+                  "minimum_total_copies": 1
+                },
+                "id": "anchor",
+                "required": true
+              },
+              {
+                "group": {
+                  "cards": ["Echo Form", "Amplify"],
+                  "minimum_distinct": 1,
+                  "minimum_total_copies": 1
+                },
+                "id": "amplifier",
+                "required": true
+              }
+            ]
+          },
+          "aspect": "DEFENSE",
+          "candidate_policy": "ADVISORY_ONLY",
+          "dynamic_verification": false,
+          "energy": {"constraints": [], "mode": "NORMAL", "sources": []},
+          "evidence_templates": [],
+          "exit_conditions": [],
+          "goals": [],
+          "hard_resource_constraints": {},
+          "mechanism": "Duplicate Buffer to absorb repeated high-damage turns.",
+          "module_id": "buffer_amplification",
+          "name": "Buffer amplification",
+          "phase": "BUILDING",
+          "provides": [
+            {"aspect": "DEFENSE", "capability": "SCALING_DEFENSE"}
+          ],
+          "soft_resource_pressures": []
+        },
+        {
+          "activation": {
+            "anchor_slots": ["anchor"],
+            "requires_capabilities": [],
+            "slots": [
+              {
+                "group": {
+                  "cards": ["Self Repair"],
+                  "minimum_distinct": 1,
+                  "minimum_total_copies": 1
+                },
+                "id": "anchor",
+                "required": true
+              },
+              {
+                "group": {
+                  "cards": ["Echo Form", "Amplify"],
+                  "minimum_distinct": 1,
+                  "minimum_total_copies": 1
+                },
+                "id": "amplifier",
+                "required": true
+              }
+            ]
+          },
+          "aspect": "SUSTAIN",
+          "candidate_policy": "ADVISORY_ONLY",
+          "dynamic_verification": false,
+          "energy": {"constraints": [], "mode": "NORMAL", "sources": []},
+          "evidence_templates": [],
+          "exit_conditions": [],
+          "goals": [],
+          "hard_resource_constraints": {},
+          "mechanism": "Duplicate Self Repair to preserve HP across repeated combats.",
+          "module_id": "self_repair_sustain",
+          "name": "Self Repair sustain",
+          "phase": "BUILDING",
+          "provides": [
+            {"aspect": "SUSTAIN", "capability": "SUSTAIN"}
+          ],
+          "soft_resource_pressures": []
+        },
+        {
+          "activation": {
+            "anchor_slots": ["anchor"],
+            "requires_capabilities": [],
+            "slots": [
+              {
+                "group": {
+                  "cards": ["Meteor Strike"],
+                  "minimum_distinct": 1,
+                  "minimum_total_copies": 1
+                },
+                "id": "anchor",
+                "required": true
+              },
+              {
+                "group": {
+                  "cards": ["Recycle", "TURBO", "Double Energy", "Aggregate"],
+                  "minimum_distinct": 1,
+                  "minimum_total_copies": 1
+                },
+                "id": "setup",
+                "required": true
+              },
+              {
+                "group": {
+                  "cards": [
+                    "Hologram", "Seek", "Skim", "Coolheaded",
+                    "Compile Driver", "Reboot", "Fission"
+                  ],
+                  "minimum_distinct": 1,
+                  "minimum_total_copies": 1
+                },
+                "id": "access",
+                "required": true
+              }
+            ]
+          },
+          "aspect": "ENGINE",
+          "candidate_policy": "ADVISORY_ONLY",
+          "dynamic_verification": true,
+          "energy": {"constraints": [], "mode": "NORMAL", "sources": []},
+          "evidence_templates": [],
+          "exit_conditions": [],
+          "goals": [],
+          "hard_resource_constraints": {},
+          "mechanism": "Reach Meteor Strike, then recycle Plasma energy through draw and retrieval.",
+          "module_id": "meteor_energy_engine",
+          "name": "Meteor Strike energy engine",
+          "phase": "BUILDING",
+          "provides": [
+            {"aspect": "ENGINE", "capability": "ENERGY"},
+            {"aspect": "ENGINE", "capability": "DRAW_CONSISTENCY"},
+            {"aspect": "ENGINE", "capability": "SCALING_DAMAGE"}
+          ],
+          "soft_resource_pressures": []
+        },
+        {
+          "activation": {
+            "anchor_slots": ["anchor"],
+            "requires_capabilities": [],
+            "slots": [
+              {
+                "group": {
+                  "cards": ["White Noise"],
+                  "minimum_distinct": 1,
+                  "minimum_total_copies": 1
+                },
+                "id": "anchor",
+                "required": true
+              },
+              {
+                "group": {
+                  "cards": ["Heatsinks", "Storm"],
+                  "minimum_distinct": 1,
+                  "minimum_total_copies": 1
+                },
+                "id": "payoff",
+                "required": true
+              }
+            ]
+          },
+          "aspect": "ENGINE",
+          "candidate_policy": "ADVISORY_ONLY",
+          "dynamic_verification": false,
+          "energy": {"constraints": [], "mode": "NORMAL", "sources": []},
+          "evidence_templates": [],
+          "exit_conditions": [],
+          "goals": [],
+          "hard_resource_constraints": {},
+          "mechanism": "Turn Powers generated by White Noise into card flow through Heatsinks or Lightning through Storm.",
+          "module_id": "generated_power_payoff",
+          "name": "Generated Power payoff",
+          "phase": "BUILDING",
+          "provides": [
+            {"aspect": "ENGINE", "capability": "POWER_GENERATION"}
+          ],
+          "soft_resource_pressures": []
+        }
+      ],
+      "resource_rules": {
+        "focus_direction": {
+          "description": "Whether the deck preserves orb Focus or deliberately trades it for physical scaling.",
+          "hard_conflicts": [
+            [
+              "PRESERVE",
+              "REDUCE"
+            ]
+          ]
+        }
+      },
+      "routes": [],
+      "support": {
+        "act_bridges": {},
+        "capabilities": {
+          "ARTIFACT": "Preserves debuff-sensitive scaling such as Biased Cognition.",
+          "BLOCK": "Provides meaningful block during setup or high-pressure turns.",
+          "DRAW": "Improves access to the deck's established mechanisms.",
+          "ENERGY": "Improves current or next-turn energy availability.",
+          "FRONTLOAD": "Provides immediate single-target damage for the current Act.",
+          "ORB_CAPACITY": "Adds orb slots that multiply established orb generation.",
+          "POWER_GENERATION": "Adds or generates powers for an established Power engine.",
+          "RETAIN": "Carries cards across turns to align setup and payoff."
+        },
+        "cards": [
+          {
+            "card": "Capacitor",
+            "provides": ["ORB_CAPACITY"]
+          },
+          {
+            "card": "Charge Battery",
+            "provides": ["ENERGY", "BLOCK"]
+          },
+          {
+            "card": "Core Surge",
+            "provides": ["ARTIFACT"]
+          },
+          {
+            "card": "Equilibrium",
+            "provides": ["BLOCK", "RETAIN"]
+          },
+          {
+            "card": "Fission",
+            "provides": ["DRAW", "ENERGY"]
+          },
+          {
+            "card": "Genetic Algorithm",
+            "provides": ["BLOCK"]
+          },
+          {
+            "card": "Machine Learning",
+            "provides": ["DRAW", "POWER_GENERATION"]
+          },
+          {
+            "card": "Reboot",
+            "provides": ["DRAW"]
+          },
+          {
+            "card": "Reinforced Body",
+            "provides": ["BLOCK"]
+          },
+          {
+            "bridge_provides": ["FRONTLOAD"],
+            "card": "Sunder",
+            "provides": []
+          },
+          {
+            "card": "White Noise",
+            "provides": ["POWER_GENERATION"]
+          }
+        ],
+        "density_capabilities": ["BLOCK", "DRAW", "ENERGY"],
+        "interpretation": "Reviewed support roles connect cards to complete modules and stage needs; unlisted cards remain neutral.",
+        "module_aspect_satisfies": {},
+        "pressure_relief": {},
+        "verification_support": {}
+      }
+    }
+  },
+  "transition": {
+    "capabilities": [
+      "SINGLE_TARGET_FRONTLOAD",
+      "AOE",
+      "IMMEDIATE_BLOCK",
+      "WEAK_OR_STRENGTH_DOWN",
+      "SCALING_DAMAGE",
+      "SCALING_DEFENSE",
+      "DRAW_CONSISTENCY",
+      "ENERGY",
+      "SUSTAIN"
+    ],
+    "foundation_needs": {
+      "DRAW_CONSISTENCY": {
+        "density_bands": [
+          {
+            "max_deck_size": 14,
+            "required_sources": 1
+          },
+          {
+            "max_deck_size": 22,
+            "required_sources": 2
+          },
+          {
+            "max_deck_size": 999,
+            "required_sources": 3
+          }
+        ]
+      }
+    },
+    "capability_aliases": {
+      "AOE": [
+        "AOE"
+      ],
+      "DRAW_CONSISTENCY": [
+        "CARD_ACCESS",
+        "DRAW",
+        "DRAW_CONSISTENCY",
+        "TUTOR"
+      ],
+      "ENERGY": [
+        "ENERGY"
+      ],
+      "IMMEDIATE_BLOCK": [
+        "BLOCK",
+        "IMMEDIATE_BLOCK"
+      ],
+      "SCALING_DAMAGE": [
+        "SCALING_DAMAGE"
+      ],
+      "SCALING_DEFENSE": [
+        "SCALING_DEFENSE"
+      ],
+      "SINGLE_TARGET_FRONTLOAD": [
+        "FRONTLOAD",
+        "SINGLE_TARGET_FRONTLOAD"
+      ],
+      "SUSTAIN": [
+        "SUSTAIN"
+      ],
+      "WEAK_OR_STRENGTH_DOWN": [
+        "STRENGTH_DOWN",
+        "WEAK",
+        "WEAK_OR_STRENGTH_DOWN"
+      ]
+    },
+    "card_capabilities": [
+      {
+        "card": "Aggregate",
+        "provides": [
+          "ENERGY"
+        ]
+      },
+      {
+        "card": "Auto-Shields",
+        "provides": [
+          "IMMEDIATE_BLOCK"
+        ]
+      },
+      {
+        "card": "Ball Lightning",
+        "provides": [
+          "SINGLE_TARGET_FRONTLOAD"
+        ]
+      },
+      {
+        "card": "Biased Cognition",
+        "provides": [
+          "SCALING_DAMAGE",
+          "SCALING_DEFENSE"
+        ]
+      },
+      {
+        "card": "Boot Sequence",
+        "provides": [
+          "IMMEDIATE_BLOCK"
+        ]
+      },
+      {
+        "card": "Buffer",
+        "provides": [
+          "SCALING_DEFENSE"
+        ]
+      },
+      {
+        "card": "Charge Battery",
+        "provides": [
+          "ENERGY",
+          "IMMEDIATE_BLOCK"
+        ]
+      },
+      {
+        "card": "Chill",
+        "provides": [
+          "IMMEDIATE_BLOCK"
+        ]
+      },
+      {
+        "card": "Cold Snap",
+        "provides": [
+          "SINGLE_TARGET_FRONTLOAD"
+        ]
+      },
+      {
+        "card": "Compile Driver",
+        "provides": [
+          "DRAW_CONSISTENCY",
+          "SINGLE_TARGET_FRONTLOAD"
+        ]
+      },
+      {
+        "card": "Consume",
+        "provides": [
+          "SCALING_DAMAGE",
+          "SCALING_DEFENSE"
+        ]
+      },
+      {
+        "card": "Coolheaded",
+        "provides": [
+          "DRAW_CONSISTENCY"
+        ]
+      },
+      {
+        "card": "Creative AI",
+        "provides": [
+          "SCALING_DAMAGE",
+          "SCALING_DEFENSE"
+        ]
+      },
+      {
+        "card": "Dark Shackles",
+        "provides": [
+          "WEAK_OR_STRENGTH_DOWN"
+        ]
+      },
+      {
+        "card": "Darkness",
+        "provides": [
+          "SCALING_DAMAGE"
+        ]
+      },
+      {
+        "card": "Defragment",
+        "provides": [
+          "SCALING_DAMAGE",
+          "SCALING_DEFENSE"
+        ]
+      },
+      {
+        "card": "Doom and Gloom",
+        "provides": [
+          "AOE",
+          "SCALING_DAMAGE",
+          "SINGLE_TARGET_FRONTLOAD"
+        ]
+      },
+      {
+        "card": "Double Energy",
+        "provides": [
+          "ENERGY"
+        ]
+      },
+      {
+        "card": "Echo Form",
+        "provides": [
+          "SCALING_DAMAGE",
+          "SCALING_DEFENSE"
+        ]
+      },
+      {
+        "card": "Electrodynamics",
+        "provides": [
+          "AOE",
+          "SCALING_DAMAGE"
+        ]
+      },
+      {
+        "card": "Equilibrium",
+        "provides": [
+          "IMMEDIATE_BLOCK"
+        ]
+      },
+      {
+        "card": "Fission",
+        "provides": [
+          "DRAW_CONSISTENCY",
+          "ENERGY"
+        ]
+      },
+      {
+        "card": "FTL",
+        "provides": [
+          "DRAW_CONSISTENCY"
+        ]
+      },
+      {
+        "card": "Fusion",
+        "provides": [
+          "ENERGY"
+        ]
+      },
+      {
+        "card": "Genetic Algorithm",
+        "provides": [
+          "IMMEDIATE_BLOCK",
+          "SCALING_DEFENSE"
+        ]
+      },
+      {
+        "card": "Glacier",
+        "provides": [
+          "IMMEDIATE_BLOCK",
+          "SCALING_DEFENSE"
+        ]
+      },
+      {
+        "card": "Go for the Eyes",
+        "provides": [
+          "WEAK_OR_STRENGTH_DOWN"
+        ]
+      },
+      {
+        "card": "Hologram",
+        "provides": [
+          "DRAW_CONSISTENCY"
+        ]
+      },
+      {
+        "card": "Hyperbeam",
+        "provides": [
+          "AOE",
+          "SINGLE_TARGET_FRONTLOAD"
+        ]
+      },
+      {
+        "card": "Leap",
+        "provides": [
+          "IMMEDIATE_BLOCK"
+        ]
+      },
+      {
+        "card": "Loop",
+        "provides": [
+          "SCALING_DAMAGE",
+          "SCALING_DEFENSE"
+        ]
+      },
+      {
+        "card": "Machine Learning",
+        "provides": [
+          "DRAW_CONSISTENCY"
+        ]
+      },
+      {
+        "card": "Melter",
+        "provides": [
+          "SINGLE_TARGET_FRONTLOAD"
+        ]
+      },
+      {
+        "card": "Meteor Strike",
+        "provides": [
+          "ENERGY",
+          "SINGLE_TARGET_FRONTLOAD"
+        ]
+      },
+      {
+        "card": "Overclock",
+        "provides": [
+          "DRAW_CONSISTENCY"
+        ]
+      },
+      {
+        "card": "Reboot",
+        "provides": [
+          "DRAW_CONSISTENCY"
+        ]
+      },
+      {
+        "card": "Reinforced Body",
+        "provides": [
+          "IMMEDIATE_BLOCK"
+        ]
+      },
+      {
+        "card": "Rip and Tear",
+        "provides": [
+          "SINGLE_TARGET_FRONTLOAD"
+        ]
+      },
+      {
+        "card": "Seek",
+        "provides": [
+          "DRAW_CONSISTENCY"
+        ]
+      },
+      {
+        "card": "Self Repair",
+        "provides": [
+          "SUSTAIN"
+        ]
+      },
+      {
+        "card": "Skim",
+        "provides": [
+          "DRAW_CONSISTENCY"
+        ]
+      },
+      {
+        "card": "Steam Barrier",
+        "provides": [
+          "IMMEDIATE_BLOCK"
+        ]
+      },
+      {
+        "card": "Streamline",
+        "provides": [
+          "SINGLE_TARGET_FRONTLOAD"
+        ]
+      },
+      {
+        "card": "Sunder",
+        "provides": [
+          "SINGLE_TARGET_FRONTLOAD"
+        ]
+      },
+      {
+        "card": "Sweeping Beam",
+        "provides": [
+          "AOE",
+          "DRAW_CONSISTENCY"
+        ]
+      },
+      {
+        "card": "Tempest",
+        "provides": [
+          "AOE"
+        ]
+      },
+      {
+        "card": "TURBO",
+        "provides": [
+          "ENERGY"
+        ]
+      }
+    ],
+    "encounter_requirements": [
+      {
+        "critical": [
+          "SINGLE_TARGET_FRONTLOAD"
+        ],
+        "encounter": "Gremlin Nob"
+      },
+      {
+        "critical": [
+          "SCALING_DAMAGE",
+          "IMMEDIATE_BLOCK"
+        ],
+        "encounter": "Lagavulin"
+      },
+      {
+        "critical": [
+          "AOE",
+          "IMMEDIATE_BLOCK"
+        ],
+        "encounter": "Three Sentries"
+      },
+      {
+        "critical": [
+          "AOE",
+          "SINGLE_TARGET_FRONTLOAD"
+        ],
+        "encounter": "Slime Boss"
+      },
+      {
+        "critical": [
+          "IMMEDIATE_BLOCK",
+          "SCALING_DAMAGE"
+        ],
+        "encounter": "The Guardian"
+      },
+      {
+        "critical": [
+          "SCALING_DAMAGE",
+          "IMMEDIATE_BLOCK"
+        ],
+        "encounter": "Hexaghost"
+      },
+      {
+        "critical": [
+          "AOE",
+          "SINGLE_TARGET_FRONTLOAD"
+        ],
+        "encounter": "Gremlin Leader"
+      },
+      {
+        "critical": [
+          "AOE",
+          "SINGLE_TARGET_FRONTLOAD",
+          "IMMEDIATE_BLOCK"
+        ],
+        "encounter": "Slavers"
+      },
+      {
+        "critical": [
+          "WEAK_OR_STRENGTH_DOWN",
+          "SCALING_DAMAGE"
+        ],
+        "encounter": "Book Of Stabbing"
+      },
+      {
+        "critical": [
+          "IMMEDIATE_BLOCK",
+          "SCALING_DAMAGE"
+        ],
+        "encounter": "Automaton"
+      },
+      {
+        "critical": [
+          "AOE",
+          "SCALING_DAMAGE"
+        ],
+        "encounter": "Collector"
+      },
+      {
+        "critical": [
+          "SCALING_DAMAGE",
+          "SCALING_DEFENSE"
+        ],
+        "encounter": "Champ"
+      },
+      {
+        "critical": [
+          "SCALING_DAMAGE"
+        ],
+        "encounter": "Giant Head"
+      },
+      {
+        "critical": [
+          "IMMEDIATE_BLOCK",
+          "DRAW_CONSISTENCY"
+        ],
+        "encounter": "Nemesis"
+      },
+      {
+        "critical": [
+          "AOE",
+          "SINGLE_TARGET_FRONTLOAD"
+        ],
+        "encounter": "Reptomancer"
+      },
+      {
+        "critical": [
+          "SCALING_DAMAGE",
+          "SCALING_DEFENSE"
+        ],
+        "encounter": "Awakened One"
+      },
+      {
+        "critical": [
+          "SCALING_DAMAGE",
+          "SCALING_DEFENSE"
+        ],
+        "encounter": "Time Eater"
+      },
+      {
+        "critical": [
+          "AOE",
+          "SCALING_DAMAGE",
+          "SCALING_DEFENSE"
+        ],
+        "encounter": "Donu And Deca"
+      },
+      {
+        "critical": [
+          "IMMEDIATE_BLOCK",
+          "DRAW_CONSISTENCY"
+        ],
+        "encounter": "Shield And Spear"
+      },
+      {
+        "critical": [
+          "SCALING_DAMAGE",
+          "SCALING_DEFENSE",
+          "WEAK_OR_STRENGTH_DOWN",
+          "DRAW_CONSISTENCY"
+        ],
+        "encounter": "The Heart"
+      }
+    ],
+    "target_pools": {
+      "1": {
+        "bosses": [
+          "Slime Boss",
+          "The Guardian",
+          "Hexaghost"
+        ],
+        "elites": [
+          "Gremlin Nob",
+          "Lagavulin",
+          "Three Sentries"
+        ]
+      },
+      "2": {
+        "bosses": [
+          "Automaton",
+          "Collector",
+          "Champ"
+        ],
+        "elites": [
+          "Gremlin Leader",
+          "Slavers",
+          "Book Of Stabbing"
+        ]
+      },
+      "3": {
+        "bosses": [
+          "Awakened One",
+          "Time Eater",
+          "Donu And Deca"
+        ],
+        "elites": [
+          "Giant Head",
+          "Nemesis",
+          "Reptomancer"
+        ]
+      },
+      "4": {
+        "bosses": [
+          "The Heart"
+        ],
+        "elites": [
+          "Shield And Spear"
+        ]
+      }
+    },
+    "target_rules": [
+      "PLANNED_ELITE_BEFORE_REST",
+      "CURRENT_ACT_BOSS",
+      "NEXT_ACT_BOSS_POOL",
+      "CURRENT_BOSS_SEQUENCE",
+      "HEART_OBJECTIVE"
+    ]
+  },
+  "expert": {
+    "context_order": [
+      "act+owned-pair+deck-size-band",
+      "act+owned-pair",
+      "act when both cards are unowned"
+    ],
+    "deck_size_limits": [
+      15,
+      20,
+      25,
+      30
+    ],
+    "direct_z": 1.0,
+    "positive_z": 0.0
+  },
+  "authority": {
+    "template": "COMMITTED_PROGRESS",
+    "transition": "CRITICAL_NEED"
+  }
+}

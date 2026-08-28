@@ -1,0 +1,49 @@
+{
+  "dataset": "baalorlord_ironclad_card_reward_history",
+  "schema_version": 1,
+  "semantics": {
+    "expert_actions": "immutable historical expert actions",
+    "quality": "modern_verified is the highest-confidence subset"
+  },
+  "source": {
+    "bytes": 46117557,
+    "path": "../card_choice/expert_data/ironclad_card_choices.jsonl",
+    "sha256": "11bda90620d5190f52b16c43e564827fe4d3df08af4405d523a11cda7dc2db3e"
+  },
+  "statistics": {
+    "actions": {
+      "pick": 15047,
+      "singing_bowl": 668,
+      "skip": 5491
+    },
+    "acts": {
+      "1": 7911,
+      "2": 6637,
+      "3": 5968,
+      "4": 690
+    },
+    "cases": 21206,
+    "decision_sources": {
+      "unknown": 21206
+    },
+    "quality": {
+      "legacy_2019": 3985,
+      "modern_clean_prefix": 4864,
+      "modern_partial": 10034,
+      "modern_verified": 2323
+    },
+    "reward_kinds": {
+      "boss_card_reward": 1367,
+      "combat_card_reward": 18441,
+      "event_card_selection": 439,
+      "event_combat_reward": 443,
+      "shop_generated_reward": 335,
+      "unknown_card_selection": 181
+    },
+    "run_outcomes": {
+      "DEFEAT": 368,
+      "HEART_KILL": 501
+    },
+    "runs": 869
+  }
+}

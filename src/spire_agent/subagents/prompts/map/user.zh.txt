@@ -1,0 +1,30 @@
+# MAP GRAPH
+{{MAP_GRAPH}}
+
+# CURRENT RUN
+{{RUN_JSON}}
+
+# PERSISTED RUN STATE
+{{SHARED_JSON}}
+
+# DETERMINISTIC ROUTE EVIDENCE
+{{ROUTE_JSON}}
+
+# RULES
+- M=普通战，?=未知（可能是事件、战斗或商店），E=精英，E*=带火精英，R=火堆，T=宝箱，$=商店。
+- 未知房必须计入战斗风险，不能当作确定安全事件；未来奖励、商店购买和火堆恢复均未兑现。
+- 必须先用当前 HP、牌组、遗物和药水活过火堆之前的所有强制房间，不能用“之后有火堆”证明当前路线安全。
+- campfire_rest_healing_available=false 时，Rest 动作不能恢复 HP。Coffee Dripper 禁止 Rest，但不阻止 Eternal Feather；只能使用 rest_site_healing_sources 中明确列出的回血来源。该列表为空时，必须用当前 HP 评估 R 后面的强制战斗。
+- campfire_smithing_available=false 时，火堆不能升级卡牌。特别是拥有 Fusion Hammer 时，R 只能用于 Rest、Recall 等剩余动作；不能把未来 R 当作牌组成长。
+- 如果 Rest 回血和升级都不可用，只能按仍然明确列出的遗物触发及 Recall 等动作评估 R；没有 rest_site_healing_source 时，它不是恢复或升级节点。
+- Act 1 在可生存时重视精英带来的卡牌和遗物成长；Act 2 提高对普通战和精英的风险权重；Act 3 必须保留尚未取得的钥匙机会。
+- DETERMINISTIC ROUTE EVIDENCE 在调用 LLM 前生成，只有其中列出的 options 合法。一次遭遇评估只能支持一场战斗，不能复用于第二场强制战斗。如果所有路线都危险，先减少未验证的强制战斗承诺；承诺相同时，优先选择 estimated survival 更高、其次 expected ending HP 更高的路线。
+- 每个 Act 的精英来自三种遭遇池，且不会和上一只精英连续重复。elite_rotation 只能排除这一种不可能遭遇，不能断言下一只具体精英。
+- PERSISTED RUN STATE 中的 run_construction 是 CardPicker 最近一次发布的确定性快照：modules 和 deficits 是决策前已审核状态，confirmed_selection 记录随后确认的选择及其结构进展。它说明成长需求，不能证明路线可生存；如果不存在，直接使用明确的牌组和遭遇证据。
+- 未使用金币尚未转化为战力。当路线能带着有意义的当前金币进入商店时，必须把这个转化机会与额外普通战/精英的具体生命和奖励收益比较；若到火堆前的风险房间不少，不得仅因火堆看起来较早就称该路线更安全。
+- 不要假设未知奖励或未知商店库存恰好提供目标牌或遗物，但也不得仅因库存尚不可见就回避可达商店。
+- 比较从当前 choice 出发的完整可达路线。返回一条从所选首节点到 BOSS 的完整路径，只能使用 MAP_GRAPH 中的节点 ID 和显式边。
+
+# OUTPUT
+allowed_choice_ids: {{ALLOWED_IDS}}
+只返回：{"choice_id": <合法整数>, "path": ["所选首节点", "...", "BOSS"], "reason": "简短理由"}

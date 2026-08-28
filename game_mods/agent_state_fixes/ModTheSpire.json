@@ -1,0 +1,10 @@
+{
+  "modid": "agentstatefixes",
+  "name": "Agent State Fixes",
+  "author_list": ["Slay the Spire Agent"],
+  "description": "Exposes game-state fields required for correct agent decisions.",
+  "version": "1.0.0",
+  "sts_version": "12-18-2022",
+  "mts_version": "3.30.0",
+  "dependencies": ["CommunicationMod"]
+}

@@ -1,0 +1,43 @@
+Name,Desc
+"Attack Potion",Choose 1 of 3 random Attack cards to add to your hand. It costs 0 this turn.
+"Blessing of the Forge",Upgrade all cards in your hand for the rest of combat.
+"Block Potion",Gain 12 Block .
+"Colorless Potion",Choose 1 of 3 random Colorless cards to add to your hand. It costs 0 this turn.
+"Dexterity Potion",Gain 2 Dexterity .
+"Energy Potion",Gain 2 Energy .
+"Explosive Potion",Deal 10 damage to all enemies.
+"Fear Potion",Apply 3 Vulnerable to target enemy.
+"Fire Potion",Deal 20 damage to target enemy.
+"Flex Potion","Gain 5 Strength . At the end of your turn, lose 5 Strength ."
+"Power Potion",Choose 1 of 3 random Power cards to add to your hand. It costs 0 this turn.
+"Skill Potion",Choose 1 of 3 random Skill cards to add to your hand. It costs 0 this turn.
+"Speed Potion","Gain 5 Dexterity . At the end of your turn, lose 5 Dexterity ."
+"Strength Potion",Gain 2 Strength .
+"Swift Potion",Draw 3 cards.
+"Weak Potion",Apply 3 Weak to target enemy.
+"Blood Potion",Heal for 20% of your Max HP.
+"Poison Potion",Apply 6 Poison to target enemy.
+"Focus Potion",Gain 2 Focus .
+"Bottled Miracle",Add 2 Miracles to your hand.
+"Ancient Potion",Gain 1 Artifact .
+"Distilled Chaos",Play the top 3 cards of your draw pile.
+"Duplication Potion","This turn, your next card is played twice."
+"Essence of Steel",Gain 4 Plated Armor .
+"Gambler's Brew","Discard any number of cards, then draw that many."
+"Liquid Bronze",Gain 3 Thorns .
+"Liquid Memories",Choose a card in your discard pile and return it to your hand. It costs 0 this turn.
+"Regen Potion",Gain 5 Regeneration .
+"Smoke Bomb",Escape from a non-boss combat. Receive no rewards.
+"Snecko Oil",Draw 5 Cards . Randomize the cost of cards in your hand
+"Elixir",Exhaust any number of cards in your hand.
+"Cunning Potion",Add 3 Shivs+ to your hand.
+"Potion of Capacity",Gain 2 Orb slots.
+"Stance Potion",Enter Calm or Wrath .
+"Cultist Potion",Gain 1 Ritual .
+"Entropic Brew",Fill all your empty potion slots with random potions.
+"Fairy in a Bottle","When you would die, heal to 30% of your Max HP instead and discard this potion."
+"Fruit Juice",Gain 5 Max HP.
+"Heart of Iron",Gain 6 Metallicize .
+"Ghost in a Jar",Gain 1 Intangible .
+"Essence of Darkness",Channel 1 Dark of each orb slot.
+"Ambrosia",Enter Divinity .
