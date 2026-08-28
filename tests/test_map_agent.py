@@ -14,7 +14,7 @@ from spire_agent.subagents.map import MapDecisionError, create_map_agent as comp
 from spire_agent.subagents.build_context import RUN_CONSTRUCTION_KEY
 from spire_agent.subagents.llm import LLMRequest, LLMResponse, PromptLanguage
 from spire_agent.tools.map import DefaultMapTool, MapError, render_map
-from spire_agent.tools.map.tool import _route_at_risk
+from spire_agent.tools.map.tool import _needed_families, _route_at_risk
 
 
 def create_map_agent(llm, *, prompt_language=PromptLanguage.ENGLISH):
@@ -198,9 +198,17 @@ class MapViewTests(unittest.TestCase):
 
 
 class ConcreteMapAgentTests(unittest.TestCase):
+    def test_act_one_hallway_does_not_hide_a_later_forced_elite(self):
+        options = ({"forced_segment": ({"room": "M"}, {"room": "E"})},)
+        self.assertEqual(_needed_families(1, options), ("ELITE",))
+
     def test_one_fight_readiness_is_not_reused_for_a_second_fight(self):
         class Supported:
-            def evaluate(self, state):
+            def __init__(self):
+                self.families = []
+
+            def evaluate(self, state, families):
+                self.families.append(families)
                 return {
                     "status": "AVAILABLE",
                     "entry_hp": state.facts["current_hp"],
@@ -216,7 +224,7 @@ class ConcreteMapAgentTests(unittest.TestCase):
             current_node={"x": 3, "y": 5},
             nodes=[
                 {"x": 0, "y": 6, "symbol": "M", "children": [{"x": 0, "y": 7}]},
-                {"x": 0, "y": 7, "symbol": "M", "children": [{"x": 0, "y": 8}]},
+                {"x": 0, "y": 7, "symbol": "E", "children": [{"x": 0, "y": 8}]},
                 {"x": 0, "y": 8, "symbol": "R", "children": [{"x": 3, "y": 16}]},
                 {"x": 1, "y": 6, "symbol": "M", "children": [{"x": 1, "y": 7}]},
                 {"x": 1, "y": 7, "symbol": "R", "children": [{"x": 3, "y": 16}]},
@@ -230,11 +238,13 @@ class ConcreteMapAgentTests(unittest.TestCase):
         )
         llm = FakeLLM({"choice_id": 0, "reason": "reuse stale evidence"})
 
+        readiness = Supported()
         decision = compose_map_agent(
-            DefaultMapTool(llm, encounter_readiness=Supported())
+            DefaultMapTool(llm, encounter_readiness=readiness)
         ).decide(request(state))
 
         self.assertEqual(decision.command, "choose 1")
+        self.assertEqual(readiness.families, [("HALLWAY",)])
         self.assertEqual(decision.source, "map.run_policy")
         self.assertEqual(llm.requests, [])
         self.assertTrue(
@@ -247,7 +257,7 @@ class ConcreteMapAgentTests(unittest.TestCase):
 
     def test_act_two_immediate_elite_requires_supported_simulation(self):
         class AtRisk:
-            def evaluate(self, state):
+            def evaluate(self, state, families):
                 return {"status": "AT_RISK", "estimated_survival": 0.30}
 
         state = map_state(
@@ -275,7 +285,7 @@ class ConcreteMapAgentTests(unittest.TestCase):
 
     def test_all_dangerous_routes_use_survival_evidence(self):
         class AtRisk:
-            def evaluate(self, state):
+            def evaluate(self, state, families):
                 return {
                     "status": "AVAILABLE",
                     "weak_hallways_remaining": 1,
@@ -319,7 +329,7 @@ class ConcreteMapAgentTests(unittest.TestCase):
 
     def test_healed_readiness_can_allow_an_elite_after_a_rest(self):
         class HpAware:
-            def evaluate(self, state):
+            def evaluate(self, state, families):
                 hp = int(state.facts["current_hp"])
                 return {
                     "status": "AVAILABLE",
@@ -360,7 +370,7 @@ class ConcreteMapAgentTests(unittest.TestCase):
 
     def test_rest_projection_ignores_routes_with_prior_combat(self):
         class HpAware:
-            def evaluate(self, state):
+            def evaluate(self, state, families):
                 hp = int(state.facts["current_hp"])
                 return {
                     "status": "AVAILABLE",
@@ -426,7 +436,7 @@ class ConcreteMapAgentTests(unittest.TestCase):
 
     def test_coffee_dripper_does_not_hide_an_at_risk_elite_after_a_rest(self):
         class AtRisk:
-            def evaluate(self, state):
+            def evaluate(self, state, families):
                 return {
                     "status": "AVAILABLE",
                     "entry_hp": state.facts["current_hp"],
@@ -471,7 +481,7 @@ class ConcreteMapAgentTests(unittest.TestCase):
 
     def test_shop_does_not_hide_two_elites_before_the_next_rest(self):
         class Supported:
-            def evaluate(self, state):
+            def evaluate(self, state, families):
                 return {
                     "status": "AVAILABLE",
                     "entry_hp": 60,
@@ -505,11 +515,11 @@ class ConcreteMapAgentTests(unittest.TestCase):
     def test_rest_route_records_current_and_healed_survival(self):
         class HpAware:
             def __init__(self):
-                self.hp = []
+                self.calls = []
 
-            def evaluate(self, state):
+            def evaluate(self, state, families):
                 hp = int(state.facts["current_hp"])
-                self.hp.append(hp)
+                self.calls.append((hp, families))
                 return {
                     "status": "AVAILABLE",
                     "entry_hp": hp,
@@ -536,7 +546,10 @@ class ConcreteMapAgentTests(unittest.TestCase):
             DefaultMapTool(FakeLLM({}), encounter_readiness=readiness)
         ).decide(request(state))
 
-        self.assertEqual(readiness.hp, [16, 40])
+        self.assertEqual(
+            readiness.calls,
+            [(16, ("ELITE",)), (40, ("ELITE",))],
+        )
         self.assertEqual(decision.payload["run_route"]["rest_readiness"]["entry_hp"], 40)
 
     def test_boss_entrance_skips_coordinate_rendering_and_llm(self):
@@ -688,7 +701,7 @@ class ConcreteMapAgentTests(unittest.TestCase):
 
     def test_map_prompt_exposes_compact_survival_evidence(self):
         class Supported:
-            def evaluate(self, state):
+            def evaluate(self, state, families):
                 return {
                     "status": "AVAILABLE",
                     "entry_hp": 55,
@@ -790,7 +803,7 @@ class ConcreteMapAgentTests(unittest.TestCase):
             def __init__(self):
                 self.hp = []
 
-            def evaluate(self, state):
+            def evaluate(self, state, families):
                 self.hp.append(state.facts["current_hp"])
                 return {
                     "status": "AVAILABLE",

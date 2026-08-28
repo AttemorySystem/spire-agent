@@ -129,6 +129,16 @@ class EncounterReadinessTests(unittest.TestCase):
         )
         self.assertIn("Spire Growth", groups["STRONG_HALLWAY"])
 
+    def test_requested_hallway_resolves_to_only_the_current_pool(self):
+        self.assertEqual(
+            set(_groups(2, families=("HALLWAY",), weak_hallways_remaining=1)),
+            {"WEAK_HALLWAY"},
+        )
+        self.assertEqual(
+            set(_groups(2, families=("HALLWAY",), weak_hallways_remaining=0)),
+            {"STRONG_HALLWAY"},
+        )
+
     def test_spec_marks_the_bottle_and_removes_potions_from_survival_trials(self):
         state = GameState(
             AgentKind.MAP,

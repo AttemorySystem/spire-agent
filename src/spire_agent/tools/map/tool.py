@@ -273,13 +273,17 @@ def _policy_options(
 
     readiness: Mapping[str, object] = {}
     rested_readiness: Mapping[str, object] = {}
-    if any(_route_has_evidence(act, row) for row in selected):
+    families = _needed_families(act, selected)
+    if families:
         evaluate = getattr(readiness_tool, "evaluate", None)
         if callable(evaluate):
-            readiness = evaluate(state)
+            readiness = evaluate(state, families)
             projected = _rested_state(state)
-            if projected is not None and any(_has_safe_rest(row) for row in selected):
-                rested_readiness = evaluate(projected)
+            rested_families = _needed_families(
+                act, tuple(row for row in selected if _has_safe_rest(row))
+            )
+            if projected is not None and rested_families:
+                rested_readiness = evaluate(projected, rested_families)
         selected = tuple(
             {
                 **row,
@@ -327,16 +331,24 @@ def _policy_options(
     return selected, gate
 
 
-def _route_has_evidence(act: int, option: Mapping[str, object]) -> bool:
-    rooms = (
-        row.get("room")
-        for row in option.get("forced_segment", ())
-        if isinstance(row, Mapping)
-    )
-    return any(
-        room in {"E", "E*"} or act in {2, 3} and room == "M"
-        for room in rooms
-    )
+def _needed_families(
+    act: int, options: Sequence[Mapping[str, object]]
+) -> tuple[str, ...]:
+    families = []
+    for option in options:
+        for row in option.get("forced_segment", ()):
+            if not isinstance(row, Mapping):
+                continue
+            room = row.get("room")
+            family = "ELITE" if room in {"E", "E*"} else None
+            if room == "M":
+                family = "HALLWAY" if act in {2, 3} else None
+            if room in {"M", "E", "E*"}:
+                if family:
+                    if family not in families:
+                        families.append(family)
+                    break
+    return tuple(families)
 
 
 def _has_safe_rest(option: Mapping[str, object]) -> bool:

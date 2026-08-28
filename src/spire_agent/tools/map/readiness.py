@@ -79,18 +79,33 @@ class EncounterReadiness:
         self.minimum_survival = minimum_survival
         self._cache: dict[str, dict[str, Any]] = {}
 
-    def evaluate(self, state: GameState) -> dict[str, Any]:
+    def evaluate(
+        self, state: GameState, families: Sequence[str] | None = None
+    ) -> dict[str, Any]:
         act = _integer(state.facts.get("act"))
         if act not in _ELITES:
             return {"status": "NOT_APPLICABLE", "act": act}
-        history = _history(self.runs)
-        rotation = _elite_rotation(act, history[2].get(act))
-        groups = _groups(act, rotation["last_elite_if_known"])
+        rooms, bottles, elites = _history(self.runs)
+        rotation = _elite_rotation(act, elites.get(act))
+        weak_remaining = max(
+            0,
+            2 - sum(room_act == act for room_act, _ in rooms) - int(
+                str(state.facts.get("room_type") or "").casefold()
+                == "monsterroom"
+                and (act, _integer(state.facts.get("floor"))) not in rooms
+            ),
+        )
+        groups = _groups(
+            act,
+            rotation["last_elite_if_known"],
+            families=families,
+            weak_hallways_remaining=weak_remaining,
+        )
         try:
             spec = _spec(
                 state,
                 tuple(name for group in groups.values() for name in group),
-                history[1],
+                bottles,
             )
             fingerprint = sha256(
                 json.dumps(spec, sort_keys=True, separators=(",", ":")).encode()
@@ -126,13 +141,7 @@ class EncounterReadiness:
                 **_summarize(json.loads(completed.stdout), groups, self.minimum_survival),
             }
             if act in {2, 3}:
-                completed_hallways = sum(
-                    room_act == act for room_act, _ in history[0]
-                ) + int(
-                    str(state.facts.get("room_type") or "").casefold() == "monsterroom"
-                    and (act, _integer(state.facts.get("floor"))) not in history[0]
-                )
-                result["weak_hallways_remaining"] = max(0, 2 - completed_hallways)
+                result["weak_hallways_remaining"] = weak_remaining
         except Exception as error:
             result = {
                 "status": "UNAVAILABLE",
@@ -163,19 +172,33 @@ class EncounterReadiness:
         )
 
 
-def _groups(act: int, last_elite: object = None) -> dict[str, Mapping[str, float]]:
+def _groups(
+    act: int,
+    last_elite: object = None,
+    *,
+    families: Sequence[str] | None = None,
+    weak_hallways_remaining: int = 0,
+) -> dict[str, Mapping[str, float]]:
     possible = (
         tuple(name for name in _ELITES[act] if name != last_elite)
         or _ELITES[act]
     )
     elite = {name: 1 / len(possible) for name in possible}
-    if act == 1:
-        return {"ELITE": elite}
-    weak, strong = (
-        (_ACT2_WEAK, _ACT2_STRONG)
-        if act == 2 else (_ACT3_WEAK, _ACT3_STRONG)
-    )
-    return {"WEAK_HALLWAY": weak, "STRONG_HALLWAY": strong, "ELITE": elite}
+    groups = {"ELITE": elite}
+    if act != 1:
+        weak, strong = (
+            (_ACT2_WEAK, _ACT2_STRONG)
+            if act == 2 else (_ACT3_WEAK, _ACT3_STRONG)
+        )
+        groups = {"WEAK_HALLWAY": weak, "STRONG_HALLWAY": strong, **groups}
+    if families is None:
+        return groups
+    requested = set(families)
+    if "HALLWAY" in requested:
+        requested.add(
+            "WEAK_HALLWAY" if weak_hallways_remaining else "STRONG_HALLWAY"
+        )
+    return {name: targets for name, targets in groups.items() if name in requested}
 
 
 def _spec(
