@@ -2,7 +2,7 @@
 
 **Spire Agent — an autonomous Slay the Spire agent.**
 
-Spire Agent autonomously plays complete runs of Slay the Spire.
+## Highlights
 
 - **Minimal harness.** Small agents route stable game states; complexity lives
   in external tools.
@@ -15,7 +15,7 @@ Spire Agent autonomously plays complete runs of Slay the Spire.
 
 - Characters: Ironclad and Defect
 - Platforms: Linux and macOS tested; Windows untested
-- Performance: under active improvement
+- Current results:
     - Ironclad: several Ascension 20 Heart wins with GPT-5.6 Luna ([video](https://www.bilibili.com/video/BV1ewuo66EP7/))
     - Defect: reached the Act 4 stage multiple times
 
@@ -87,14 +87,9 @@ cmake --build 3rd/sts_lightspeed/build \
   --target battle-sim card-reward-eval -j
 ```
 
-GitHub release bundles include the platform-independent `AgentStateFixes.jar`
-and `AgentVisualizer.jar`, so release users do not need a JDK. From a source
-checkout, copy the matching release JARs or build them locally with a JDK:
-
-```bash
-./game_mods/agent_state_fixes/build.sh
-./game_mods/agent_visualizer/build.sh
-```
+Download `AgentStateFixes.jar` and `AgentVisualizer.jar` from the
+[GitHub Releases](https://github.com/AttemorySystem/spire-agent/releases) page
+and place both files in `runtime/mods/`.
 
 Set the model in [config.yaml](config.yaml), export `API_KEY`, and follow the
 [detailed installation guide](docs/install.md) for platform prerequisites,
@@ -141,19 +136,24 @@ All three agents receive a stable `DecisionRequest` and return one legal
 `Decision`. Their tools are injected behind that boundary, so an implementation
 can be replaced without changing `GameAgent` or replay.
 
-- **Map Agent** evaluates complete routes to the Act boss. Deterministic gates
+- **Map Agent** uses an LLM because route selection depends on contextual
+  tradeoffs that are difficult to reduce to one fixed score. It evaluates
+  complete routes to the Act boss. Deterministic gates
   preserve keys and reject unsupported consecutive fights using current-deck
   simulations; the LLM ranks the remaining routes by growth, recovery, Shops,
   and Act-specific risk.
-- **Build Agent** owns card rewards, shops, events, and rest sites. Its default
-  Winning Path picker searches toward a small set of expert winning-deck
-  templates. Template distance, immediate survival needs, and contextual expert
-  choices drive deterministic picks and skips; the LLM handles only unresolved
-  frontiers.
+- **Build Agent** owns deck construction as well as shops, events, and rest
+  sites. Instead of using a neural network to predict individual card picks,
+  its default Winning Path picker searches a sparse graph of expert
+  winning-deck templates. Template distance, immediate survival needs, and
+  contextual expert choices drive deterministic picks and skips; the LLM
+  handles only unresolved frontiers.
 - **Combat Agent** receives the complete combat state. Its default tool searches
-  `sts_lightspeed` with MCTS and returns one root action plus any required card
-  selections. Potions are first withheld, then selectively exposed to MCTS when
-  the no-potion search predicts excessive HP loss.
+  `sts_lightspeed` with MCTS, which already plays combat effectively, and returns
+  one root action plus any required card selections. Potions are first withheld,
+  then selectively exposed to MCTS when the no-potion search predicts excessive
+  HP loss. Some game-specific compatibility handling remains and is still being
+  simplified.
 
 Select implementations under `agents` in [config.yaml](config.yaml).
 
