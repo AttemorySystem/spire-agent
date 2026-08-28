@@ -52,16 +52,24 @@ public final class CommunicationTransitionStatePatch {
             return false;
         }
         AbstractEvent event = AbstractDungeon.getCurrRoom().event;
-        if (
-            event == null ||
-            !event.getClass().getName().equals(
-                "com.megacrit.cardcrawl.events.city.TheJoust"
+        if (event == null) {
+            return false;
+        }
+        String className = event.getClass().getName();
+        String timerName;
+        if (className.equals("com.megacrit.cardcrawl.events.city.TheJoust")) {
+            timerName = "joustTimer";
+        } else if (
+            className.equals(
+                "com.megacrit.cardcrawl.events.shrines.GremlinMatchGame"
             )
         ) {
+            timerName = "waitTimer";
+        } else {
             return false;
         }
         try {
-            Field timer = event.getClass().getDeclaredField("joustTimer");
+            Field timer = event.getClass().getDeclaredField(timerName);
             timer.setAccessible(true);
             return timer.getFloat(event) > 0.0F;
         } catch (ReflectiveOperationException | SecurityException error) {
@@ -100,7 +108,7 @@ public final class CommunicationTransitionStatePatch {
         }
         boolean animationPending = eventAnimationPending();
         if (animationPending) {
-            effectNames.add("TheJoustAnimation");
+            effectNames.add("EventAnimation");
         }
         if (
             AbstractDungeon.getCurrRoom() != null && SoulGroup.isActive()

@@ -21,6 +21,7 @@ _RULES = {
     "mind_bloom": ("mind bloom", "mindbloom"),
     "dead_adventurer": ("dead adventurer",),
     "knowing_skull": ("knowing skull",),
+    "match_and_keep": ("match and keep",),
 }
 
 
@@ -49,6 +50,10 @@ def forced_event_choice(
     survival = _survival_choice(state, shared or {})
     if survival is not None:
         return survival
+    if rule == "match_and_keep":
+        # Replaying the leading pair keeps a match, but spends mismatched
+        # attempts instead of deliberately adding random cards to the deck.
+        return 0 if labels else None
     if rule == "dead_adventurer":
         current = _number(state.facts.get("current_hp"))
         maximum = _number(state.facts.get("max_hp"))

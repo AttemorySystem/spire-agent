@@ -42,7 +42,8 @@ It currently adds:
   live runs and replay do not advance past an event while a selected card,
   potion, key, or other persistent result is still being committed. Decorative
   effects such as speech bubbles do not block decisions; card movement and The
-  Joust's timed animation do because their completion can change game state.
+  Joust and Match and Keep timed animations do because their completion can
+  change game state.
 - discard-to-hand cost overrides remain atomic across bridge frames, so effects
   such as Liquid Memories keep their temporary cost in live play and replay.
 

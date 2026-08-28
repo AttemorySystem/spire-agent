@@ -850,11 +850,30 @@ class BuildAgentTests(unittest.TestCase):
             "Mind Bloom": "mind_bloom",
             "Dead Adventurer": "dead_adventurer",
             "Knowing Skull": "knowing_skull",
+            "Match and Keep!": "match_and_keep",
         }
         for name, key in cases.items():
             with self.subTest(name=name):
                 state = build_state("EVENT", details={"event_name": name})
                 self.assertEqual(event_rule(state), key)
+
+    def test_match_and_keep_repeats_the_first_available_pair_without_llm(self):
+        llm = FakeLLM([])
+        for choices in (
+            ("card0", "card1", "card2"),
+            ("card1", "card2"),
+            ("Strike", "Defend", "card2"),
+        ):
+            with self.subTest(choices=choices):
+                state = build_state(
+                    "EVENT",
+                    choices=choices,
+                    details={"event_name": "Match and Keep!"},
+                )
+                decision = create_build_agent(llm).decide(request(state))
+                self.assertEqual(decision.command, "choose 0")
+                self.assertEqual(decision.source, "build.event_rule")
+        self.assertEqual(llm.requests, [])
 
     def test_mind_bloom_prompt_rejects_unprotected_normalities(self):
         llm = FakeLLM([response(choice_id=0)])
