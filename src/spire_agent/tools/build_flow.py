@@ -336,16 +336,25 @@ def _continue_selection(request: DecisionRequest) -> Decision | None:
             "confirm the completed Build selection",
             continuation=ContinuationChange.clear(),
         )
-    wanted = _normalize_name(targets[0]).removesuffix("+")
+    wanted = _normalize_name(targets[0])
+    choices = tuple(
+        _normalize_name(_choice_label(choice)) for choice in state.screen.choices
+    )
     choice_id = next(
         (
-            index
-            for index, choice in enumerate(state.screen.choices)
-            if index not in used
-            and _normalize_name(_choice_label(choice)).removesuffix("+") == wanted
+            index for index, choice in enumerate(choices)
+            if index not in used and choice == wanted
         ),
         None,
     )
+    if choice_id is None and not wanted.endswith("+"):
+        choice_id = next(
+            (
+                index for index, choice in enumerate(choices)
+                if index not in used and choice.removesuffix("+") == wanted
+            ),
+            None,
+        )
     if choice_id is None:
         return None
     remaining = targets[1:]

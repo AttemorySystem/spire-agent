@@ -198,11 +198,10 @@ def analyze_need_profile(
     }
     plan = analyze_deck_plan(state, catalog)
     raw_capabilities = set(plan.capabilities)
-    unverified = _dynamic_capability_evidence(state, plan, catalog)
-    raw_capabilities.difference_update(capability for _, capability in unverified)
-    raw_capabilities.update(
-        _owned_card_capabilities(state, model, catalog, unverified)
+    raw_capabilities.difference_update(
+        _unverified_module_capabilities(plan, catalog)
     )
+    raw_capabilities.update(_owned_card_capabilities(state, model, catalog))
     current = {
         need for need, accepted in aliases.items()
         if accepted.intersection(raw_capabilities)
@@ -301,7 +300,6 @@ def _owned_card_capabilities(
     state: DecisionState,
     model: Mapping[str, Any],
     catalog: Mapping[str, Any],
-    unverified: set[tuple[str, str]] | None = None,
 ) -> set[str]:
     owned = {
         str(name) for name, count in _object(state.deck.get("counts"), "deck.counts").items()
@@ -309,83 +307,50 @@ def _owned_card_capabilities(
     }
     knowledge = _object(catalog.get("knowledge"), "catalog.knowledge")
     support = _object(knowledge.get("support"), "catalog.knowledge.support")
-    requirements = {
-        str(row.get("card") or row.get("name") or ""): set(
-            map(str, _array(row.get("requires_any_owned")))
-        )
-        for row in (
-            *_rows(knowledge.get("conditional_cards")),
-            *_rows(support.get("cards")),
-        )
-        if row.get("requires_any_owned")
-    }
+    requirements: dict[str, list[set[str]]] = {}
+    for row in (
+        *_rows(knowledge.get("conditional_cards")),
+        *_rows(support.get("cards")),
+    ):
+        if row.get("requires_any_owned"):
+            requirements.setdefault(
+                str(row.get("card") or row.get("name") or ""), []
+            ).append(set(map(str, _array(row.get("requires_any_owned")))))
     result: set[str] = set()
-    unverified = unverified or set()
     for row in _rows(model.get("card_capabilities")):
         card = str(row.get("card") or "")
-        required = requirements.get(card, set())
-        if card in owned and (not required or required & owned):
-            result.update(
-                capability
-                for capability in map(str, _array(row.get("provides")))
-                if (card, capability) not in unverified
-            )
+        if card in owned and all(
+            group & owned for group in requirements.get(card, ())
+        ):
+            result.update(map(str, _array(row.get("provides"))))
     return result
 
 
-def _dynamic_capability_evidence(
-    state: DecisionState,
+def _unverified_module_capabilities(
     plan: DeckPlan,
     catalog: Mapping[str, Any],
-) -> set[tuple[str, str]]:
+) -> set[str]:
     dynamic = set(plan.dynamic_verification_required)
     if not dynamic:
         return set()
+    active = set(plan.active_modules)
+    active_dynamic = active & dynamic
     modules = _rows(
         _object(catalog.get("knowledge"), "catalog.knowledge").get("modules")
     )
     verified = {
         str(row.get("capability") or "")
         for module in modules
-        if str(module.get("module_id") or "") in plan.active_modules
+        if str(module.get("module_id") or "") in active
         and str(module.get("module_id") or "") not in dynamic
         for row in _rows(module.get("provides"))
     }
-    evidence = set()
-    for module in modules:
-        if str(module.get("module_id") or "") not in dynamic:
-            continue
-        capabilities = {
-            str(row.get("capability") or "")
-            for row in _rows(module.get("provides"))
-        } - verified
-        activation = _object(module.get("activation"), "module.activation")
-        anchors = set(map(str, _array(activation.get("anchor_slots"))))
-        for slot in _rows(activation.get("slots")):
-            if str(slot.get("id") or "") in anchors:
-                evidence.update(
-                    (card, capability)
-                    for card in _slot_cards(slot)
-                    for capability in capabilities
-                )
-    return evidence
-
-
-def _slot_cards(value: Mapping[str, Any]) -> set[str]:
-    group = value.get("group")
-    cards = (
-        set(map(str, _array(group.get("cards"))))
-        if isinstance(group, Mapping)
-        else set()
-    )
-    cards.update(
-        str(fact.get("name") or "")
-        for fact in _rows(value.get("all"))
-        if str(fact.get("kind") or "").upper() == "CARD"
-    )
-    for alternative in _rows(value.get("any")):
-        cards.update(_slot_cards(alternative))
-    return cards
+    return {
+        str(row.get("capability") or "")
+        for module in modules
+        if str(module.get("module_id") or "") in active_dynamic
+        for row in _rows(module.get("provides"))
+    } - verified
 
 
 def _foundation_status(

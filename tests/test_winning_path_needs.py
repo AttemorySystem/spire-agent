@@ -132,6 +132,17 @@ class WinningPathNeedTests(unittest.TestCase):
         self.assertNotIn("SCALING_DEFENSE", profile.current_capabilities)
         self.assertIn("SCALING_DEFENSE", profile.blocking_deficits)
 
+    def test_dynamic_module_without_anchors_is_also_unverified(self):
+        state = _state(
+            deck=("Core Card",),
+            route={"planned_rooms": ["Boss"]},
+        )
+        catalog = _catalog([_decisive_core("Core Card", dynamic=True)])
+
+        profile = analyze_need_profile(state, catalog)
+
+        self.assertNotIn("IMMEDIATE_BLOCK", profile.current_capabilities)
+
     def test_dynamic_module_does_not_hide_static_scaling_block(self):
         state = _state(
             act=2,
@@ -148,6 +159,35 @@ class WinningPathNeedTests(unittest.TestCase):
 
         self.assertIn("SCALING_DEFENSE", profile.current_capabilities)
         self.assertNotIn("SCALING_DEFENSE", profile.blocking_deficits)
+
+    def test_consume_requires_the_orb_capacity_module_for_scaling(self):
+        catalog = load_default_catalog("DEFECT")
+        unsupported = _state(
+            act=2,
+            boss="Champ",
+            character="DEFECT",
+            deck=("Consume", "Ball Lightning"),
+            route={"planned_rooms": ["Boss"]},
+        )
+        supported = _state(
+            act=2,
+            boss="Champ",
+            character="DEFECT",
+            deck=("Consume", "Ball Lightning", "Capacitor"),
+            route={"planned_rooms": ["Boss"]},
+        )
+
+        unsupported_profile = analyze_need_profile(unsupported, catalog)
+        supported_profile = analyze_need_profile(supported, catalog)
+
+        self.assertNotIn(
+            "SCALING_DEFENSE", unsupported_profile.current_capabilities
+        )
+        self.assertNotIn(
+            "SCALING_DAMAGE", unsupported_profile.current_capabilities
+        )
+        self.assertIn("SCALING_DEFENSE", supported_profile.current_capabilities)
+        self.assertIn("SCALING_DAMAGE", supported_profile.current_capabilities)
 
     def test_blocking_need_has_first_authority(self):
         state = _state(

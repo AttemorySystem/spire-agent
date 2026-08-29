@@ -133,6 +133,10 @@ class WinningPathLiveTests(unittest.TestCase):
 
         self.assertEqual(result["command"], "skip")
         self.assertEqual(result["candidates"][2]["template"]["level"], "NONE")
+        self.assertEqual(
+            result["candidates"][2]["hard_constraints"][0]["type"],
+            "MISSING_PREREQUISITE",
+        )
 
     def test_defect_consume_still_advances_orb_capacity(self):
         result = _defect_reward(
@@ -144,6 +148,10 @@ class WinningPathLiveTests(unittest.TestCase):
         )
 
         self.assertEqual(result["command"], "choose 2")
+        self.assertEqual(
+            result["candidates"][2]["template"]["observed_level"],
+            "CORE_ACTIVATION",
+        )
         self.assertEqual(
             result["candidates"][2]["template"]["route_id"],
             "orb_capacity_scaling",

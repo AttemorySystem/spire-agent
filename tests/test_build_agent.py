@@ -848,6 +848,22 @@ class BuildAgentTests(unittest.TestCase):
         self.assertEqual(selected.source, "build.selection")
         self.assertEqual(len(llm.requests), 1)
 
+    def test_selection_preserves_an_explicit_upgrade(self):
+        state = build_state("GRID", choices=("Zap", "Zap+"))
+        continuation = Continuation(
+            AgentKind.BUILD,
+            "build_flow",
+            state.scope_id,
+            expected_screens=("GRID", "HAND_SELECT"),
+            data={"flow": "selection", "targets": ("Zap+",)},
+        )
+
+        selected = create_build_agent(FakeLLM([])).decide(
+            request(state, continuation)
+        )
+
+        self.assertEqual(selected.command, "choose 1")
+
     def test_missing_selection_target_uses_the_visible_grid(self):
         llm = FakeLLM([response(choice_id=0)])
         state = build_state("GRID", choices=("Strike", "Defend"))

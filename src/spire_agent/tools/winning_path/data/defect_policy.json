@@ -70,6 +70,12 @@
             "Storm",
             "Tempest"
           ]
+        },
+        {
+          "name": "Consume",
+          "requires_any_owned": [
+            "Capacitor"
+          ]
         }
       ],
       "dominant_cards": [
@@ -187,7 +193,7 @@
             ]
           },
           "aspect": "OFFENSE",
-          "candidate_policy": "COMPATIBLE_ONLY",
+          "candidate_policy": "ADVISORY_ONLY",
           "dynamic_verification": false,
           "energy": {
             "constraints": [],
@@ -885,7 +891,7 @@
             ]
           },
           "aspect": "ENGINE",
-          "candidate_policy": "ADVISORY_ONLY",
+          "candidate_policy": "COMPATIBLE_ONLY",
           "dynamic_verification": false,
           "energy": {"constraints": [], "mode": "NORMAL", "sources": []},
           "evidence_templates": [],
@@ -1478,8 +1484,7 @@
       {
         "card": "Genetic Algorithm",
         "provides": [
-          "IMMEDIATE_BLOCK",
-          "SCALING_DEFENSE"
+          "IMMEDIATE_BLOCK"
         ]
       },
       {
