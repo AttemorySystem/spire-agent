@@ -166,6 +166,12 @@ The separate Focus Depth module is supported by 186 winning decks. It lets a
 Frost deck recognize progress from a second Focus source without redefining a
 single Focus source as incomplete.
 
+Focus and Frost remains active with two distinct Frost sources, while an
+optional density slot continues to recognize the third and fourth source.
+Because that slot is not required, it does not remove established capabilities.
+Only optional slots admit continuous progress in `MODULE_LEXICOGRAPHIC`;
+required slots retain complete-slot behavior.
+
 The Blizzard Frost cycle is supported by 18 exact winning decks. It requires
 an already-owned Blizzard, five Frost-generation card copies, and four
 substantial draw or card-access sources. A candidate has direct authority only

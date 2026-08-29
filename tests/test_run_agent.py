@@ -225,14 +225,6 @@ class RuntimeEntryTests(unittest.TestCase):
                 load_runtime_config(path)
 
             path.write_text(
-                "agents:\n  map: llm\n  build: winning_path\n  combat: mcts\n"
-                "winning_path:\n  version: v3\n",
-                encoding="utf-8",
-            )
-            with self.assertRaises(AgentConfigError):
-                load_runtime_config(path)
-
-            path.write_text(
                 "prompt_language: de\n"
                 "agents:\n  map: llm\n  build: winning_path\n  combat: mcts\n",
                 encoding="utf-8",

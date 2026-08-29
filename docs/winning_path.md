@@ -12,7 +12,8 @@ plus survival, block plus Body Slam, exhaust engines, status engines, and
 energy/draw engines. Winning Path treats card selection as a search from the
 current deck toward those reviewed winning structures.
 
-V1 showed that this approach works, but its optimization surface was too open.
+Earlier iterations showed that this approach works, but the optimization surface
+was too open.
 A surprising choice could lead to a new rule, threshold, or exception in a
 different layer. It then became difficult to answer three basic questions:
 

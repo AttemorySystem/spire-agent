@@ -24,6 +24,9 @@ from spire_agent.tools.winning_path import (
     create_card_picker,
 )
 from spire_agent.tools.winning_path.card_policy import CardRewardError
+from spire_agent.tools.winning_path.catalog import load_default_catalog
+from spire_agent.tools.winning_path.contracts import DecisionState
+from spire_agent.tools.winning_path.templates import analyze_templates
 
 from tests.test_winning_path import _request
 from tests.test_card_reward_policy import FakeLLM, card_state, request
@@ -128,6 +131,84 @@ class WinningPathLiveTests(unittest.TestCase):
         self.assertEqual(result["command"], "choose 0")
         self.assertEqual(
             result["candidates"][0]["template"]["level"], "CORE_ACTIVATION"
+        )
+
+    def test_defect_fourth_frost_source_advances_density_target(self):
+        deck = (
+            "Zap", "Dualcast", "Coolheaded", "Cold Snap", "Glacier",
+            "Consume",
+        )
+        result = _defect_reward(
+            deck,
+            ("Beam Cell", "Coolheaded", "Recursion"),
+            act=3,
+            floor=48,
+            boss="Awakened One",
+        )
+
+        self.assertEqual(result["command"], "choose 1")
+        self.assertEqual(
+            result["candidates"][1]["template"]["level"], "COMMITTED_PROGRESS"
+        )
+
+        full = _defect_reward(
+            (*deck, "Coolheaded"),
+            ("Beam Cell", "Coolheaded", "Recursion"),
+            act=3,
+            floor=48,
+            boss="Awakened One",
+        )
+        self.assertEqual(full["command"], "skip")
+        self.assertEqual(full["candidates"][1]["template"]["level"], "NONE")
+
+    def test_defect_does_not_count_partial_required_slot_progress(self):
+        catalog = load_default_catalog("DEFECT")
+        blizzard = next(
+            row
+            for row in catalog["knowledge"]["modules"]
+            if row["module_id"] == "blizzard_frost_cycle"
+        )
+        state = DecisionState(
+            run={"character": "DEFECT", "act": 2, "floor": 18},
+            deck={
+                "counts": {"Blizzard": 1, "Cold Snap": 1, "Coolheaded": 1},
+                "physical_size": 3,
+            },
+            assets={"relics": []},
+            route={},
+            reward={"offered_cards": [{"id": "Chill", "upgrades": 0}]},
+        )
+        result = analyze_templates(
+            state,
+            {
+                "knowledge": {"modules": [blizzard], "dominant_cards": []},
+                "derived": catalog["derived"],
+            },
+        )
+
+        self.assertEqual(result[0]["level"], "NONE")
+
+    def test_defectxx03_prefers_frost_density_over_turbo(self):
+        result = _defect_reward(
+            (
+                "Ascender's Bane", "Strike", "Strike", "Strike", "Defend",
+                "Defend", "Defend", "Defend", "Zap", "Dualcast",
+                "Coolheaded", "Ball Lightning", "Seek", "Sweeping Beam",
+                "Consume", "Cold Snap", "Machine Learning", "Rebound",
+            ),
+            ("TURBO", "Coolheaded", "Scrape"),
+            act=1,
+            floor=14,
+            boss="Hexaghost",
+            relics=(
+                "Cracked Core", "Strike Dummy", "Matryoshka",
+                "Fossilized Helix",
+            ),
+        )
+
+        self.assertEqual(result["command"], "choose 1")
+        self.assertEqual(
+            result["candidates"][1]["template"]["level"], "COMMITTED_PROGRESS"
         )
 
     def test_defect_reprogram_requires_a_supported_physical_plan(self):

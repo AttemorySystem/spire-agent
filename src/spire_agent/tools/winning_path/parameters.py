@@ -36,7 +36,6 @@ _FIXED = {
     "no_positive_evidence": "SKIP",
     "multiple_unranked_positive": "LLM",
     "singing_bowl": "replace skip only",
-    "runtime_v1_fallback": False,
     "online_mcts_authority": False,
 }
 _CHANGE_CONTROL = {

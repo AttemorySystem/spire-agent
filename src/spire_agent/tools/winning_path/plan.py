@@ -46,6 +46,7 @@ def module_progress(
     )
     slots = _mapping_rows(activation.get("slots"))
     required = tuple(slot for slot in slots if bool(slot.get("required", True)))
+    optional = tuple(slot for slot in slots if not bool(slot.get("required", True)))
     satisfied = tuple(
         sorted(
             str(slot.get("id") or "")
@@ -53,6 +54,12 @@ def module_progress(
             if _slot_satisfied(slot, counts, max_upgrades, relics)
         )
     )
+    optional_slot_progress = {
+        str(slot.get("id") or ""): _slot_progress(
+            slot, counts, max_upgrades, relics
+        )
+        for slot in optional
+    }
     anchors = {
         str(item) for item in _array_optional(activation.get("anchor_slots"))
     }
@@ -72,6 +79,7 @@ def module_progress(
         "satisfied_capabilities": tuple(
             sorted(required_capabilities.intersection(owned_capabilities))
         ),
+        "optional_slot_progress": optional_slot_progress,
         "complete": len(satisfied) == len(required)
         and required_capabilities.issubset(owned_capabilities),
     }
@@ -253,6 +261,42 @@ def _slot_satisfied(
             for clause in alternatives
         )
     return _clause_satisfied(slot, counts, upgrades, relics)
+
+
+def _slot_progress(
+    slot: Mapping[str, Any],
+    counts: Mapping[str, int],
+    upgrades: Mapping[str, int],
+    relics: set[str],
+) -> int:
+    alternatives = _mapping_rows(slot.get("any")) or (slot,)
+    return max(
+        (_clause_progress(row, counts, upgrades, relics) for row in alternatives),
+        default=0,
+    )
+
+
+def _clause_progress(
+    clause: Mapping[str, Any],
+    counts: Mapping[str, int],
+    upgrades: Mapping[str, int],
+    relics: set[str],
+) -> int:
+    score = sum(
+        int(_fact_satisfied(fact, counts, upgrades, relics))
+        for fact in _mapping_rows(clause.get("all"))
+    )
+    group = _object_optional(clause.get("group"))
+    if not group:
+        return score
+    cards = tuple(str(card) for card in _array_optional(group.get("cards")))
+    distinct = sum(counts.get(card, 0) > 0 for card in cards)
+    copies = sum(max(0, counts.get(card, 0)) for card in cards)
+    return (
+        score
+        + min(distinct, int(group.get("minimum_distinct") or 0))
+        + min(copies, int(group.get("minimum_total_copies") or 0))
+    )
 
 
 def _clause_satisfied(

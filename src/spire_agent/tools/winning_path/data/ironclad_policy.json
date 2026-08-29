@@ -8,7 +8,7 @@
   },
   "templates": {
     "distance": {
-      "algorithm": "CERTIFICATE_LEXICOGRAPHIC_V1",
+      "algorithm": "CERTIFICATE_LEXICOGRAPHIC",
       "future_choices": "ironclad_catalog.derived.horizons",
       "offer_probability": "ironclad_catalog.derived.offer_rates",
       "progress_order": [

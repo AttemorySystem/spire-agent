@@ -18,13 +18,11 @@ def analyze_templates(
     character = normalize_character(state.run.get("character"))
     policy = load_policy(character)["parameters"]["templates"]
     algorithm = policy["distance"]["algorithm"]
-    if algorithm not in {
-        "CERTIFICATE_LEXICOGRAPHIC_V1", "MODULE_LEXICOGRAPHIC_V1"
-    }:
+    if algorithm not in {"CERTIFICATE_LEXICOGRAPHIC", "MODULE_LEXICOGRAPHIC"}:
         raise ValueError("unsupported template distance algorithm")
     knowledge = catalog.get("knowledge") or {}
     offered = list(state.reward.get("offered_cards") or ())
-    if algorithm == "MODULE_LEXICOGRAPHIC_V1":
+    if algorithm == "MODULE_LEXICOGRAPHIC":
         return {
             choice_id: _module_evidence(state, card, catalog)
             for choice_id, card in enumerate(offered)
@@ -110,11 +108,18 @@ def _module_evidence(
         before = module_progress(state, module)
         after = module_progress(after_state, module)
         gained = set(after["satisfied_slots"]) - set(before["satisfied_slots"])
+        optional_gain = sum(
+            int(
+                after["optional_slot_progress"][slot]
+                > before["optional_slot_progress"][slot]
+            )
+            for slot in before["optional_slot_progress"]
+        )
         anchors_before = set(before["satisfied_anchor_slots"])
         anchors_after = set(after["satisfied_anchor_slots"])
         if after["complete"] and not before["complete"]:
             level = "CORE_ACTIVATION"
-        elif anchors_before and gained:
+        elif anchors_before and (gained or optional_gain):
             level = "COMMITTED_PROGRESS"
         elif anchors_after - anchors_before:
             level = "REACHABLE_ENTRY"
@@ -134,7 +139,7 @@ def _module_evidence(
                 "route_id": after["module_id"],
                 "completed_core_gain": int(after["complete"]),
                 "anchor_reduction": len(anchors_after - anchors_before),
-                "missing_card_reduction": len(gained),
+                "missing_card_reduction": max(len(gained), optional_gain),
                 "completion_probability": _completion_probability(
                     after_state, module, rates, catalog
                 ),

@@ -256,6 +256,8 @@ def _module_complete(
     deck: Counter[str], module: Mapping[str, Any], relics: set[str] | None = None
 ) -> bool:
     for slot in module["activation"]["slots"]:
+        if not bool(slot.get("required", True)):
+            continue
         clauses = slot.get("any") or (slot,)
         if not any(_clause_complete(deck, relics or set(), row) for row in clauses):
             return False

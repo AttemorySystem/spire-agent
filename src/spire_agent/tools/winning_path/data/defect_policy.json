@@ -8,7 +8,7 @@
   },
   "templates": {
     "distance": {
-      "algorithm": "MODULE_LEXICOGRAPHIC_V1",
+      "algorithm": "MODULE_LEXICOGRAPHIC",
       "future_choices": "defect_catalog.derived.horizons",
       "offer_probability": "defect_catalog.derived.offer_rates",
       "progress_order": [
@@ -258,6 +258,20 @@
                 },
                 "id": "frost",
                 "required": true
+              },
+              {
+                "group": {
+                  "cards": [
+                    "Glacier",
+                    "Cold Snap",
+                    "Coolheaded",
+                    "Chill"
+                  ],
+                  "minimum_distinct": 2,
+                  "minimum_total_copies": 4
+                },
+                "id": "frost_density",
+                "required": false
               }
             ]
           },
