@@ -153,6 +153,59 @@ uv run spire-agent --no-tui
 
 在 [config.yaml](config.yaml) 的 `agents` 配置中选择具体实现。
 
+## 说明
+
+### LLM 实现与 Prompt
+
+如果希望由配置的 LLM 接管所有 Build 和 Combat 决策，可以设置：
+
+```yaml
+agents:
+  map: llm
+  build: llm
+  combat: llm
+```
+
+Build 和 Combat 可以独立切换。
+
+Build 和 Combat 共用 [config.yaml](config.yaml) 中 `llm` 下的 endpoint 和模型。
+每次请求都会包含完整、规范化的游戏状态。
+
+纯 `build: llm` 和 `combat: llm` 实现都定义在
+[`tools/llm_agents.py`](src/spire_agent/tools/llm_agents.py) 中。该文件包含发给模型的
+指令，并要求两个 Agent 返回相同的 JSON 对象：
+`{"command":"...","reason":"..."}`。
+
+自定义这些指令时，不要改变命令契约：模型必须从 CommunicationMod 当前
+提供的命令中只选择一个，并遵守文档中的索引规则。Tool 会自动组装动态
+游戏状态，prompt 只需要包含稳定的决策规则。
+
+使用默认的 `agents.build: winning_path` 时，Winning Path 会在证据充分时直接处理
+选牌。无法确定的选牌和其他不属于 fast path 的 Build 场景，会使用以下分场景
+prompt：
+[`en.toml`](src/spire_agent/subagents/prompts/build/en.toml) 和
+[`zh.toml`](src/spire_agent/subagents/prompts/build/zh.toml)；纯
+`build: llm` 实现不会使用这两个文件。
+
+### MCTS 搜索质量
+
+[config.yaml](config.yaml) 中的 `mcts` 配置控制 Combat 搜索预算。提高每个 worker
+的 `simulations` 和 `max_time_ms` 可以为普通搜索提供更多空间；
+`adaptive_simulations` 和 `adaptive_time_ms` 对困难状态起相同作用。
+`threads` 控制并行 worker 数和 RNG world 覆盖。搜索可能先达到模拟次数或时间限制，
+因此当其中一个已经成为瓶颈时，需要同时提高两项限制。更大的配置可能改善困难战斗
+中的决策，但也会占用更多 CPU，并延长每个动作的等待时间；请根据可用 CPU 核心数
+设置 `threads`。
+
+### 地图决策延迟
+
+MapTool 在调用 Map LLM 对路线排序前，会使用当前卡组评估未来具有代表性的普通战斗
+和精英战斗，并在需要时评估篝火后的状态。这些确定性的 readiness 模拟会使地图决策
+明显变慢。它们使用的较小搜索预算目前固定在
+[`tools/map/readiness.py`](src/spire_agent/tools/map/readiness.py) 中，会在同一个 run
+内缓存，但尚未暴露到 `config.yaml`。Combat 的 `mcts` 配置不会改变这部分地图评估
+预算。
+
 ## 致谢
 
 - [sts_lightspeed](https://github.com/Attemory/sts_lightspeed)：高速战斗模拟器和

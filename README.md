@@ -167,6 +167,64 @@ this boundary, so an implementation can be replaced without changing
 
 Select implementations under `agents` in [config.yaml](config.yaml).
 
+## Notes
+
+### LLM implementations and prompts
+
+To let the configured LLM control every Build and Combat decision, set:
+
+```yaml
+agents:
+  map: llm
+  build: llm
+  combat: llm
+```
+
+Build and Combat can be switched independently.
+
+Build and Combat share the endpoint and model under `llm` in
+[config.yaml](config.yaml). The full normalized game state is included in every
+request.
+
+The pure `build: llm` and `combat: llm` implementations are both defined in
+[`tools/llm_agents.py`](src/spire_agent/tools/llm_agents.py). This file contains
+the instructions sent to the model and requires both agents to return the same
+JSON object: `{"command":"...","reason":"..."}`.
+
+When customizing these instructions, keep the command contract unchanged: the
+model must choose exactly one command currently exposed by CommunicationMod and
+follow the documented index rules. The Tool assembles the changing game-state
+payload automatically, so the prompt only needs stable decision rules.
+
+With the default `agents.build: winning_path`, Winning Path resolves card
+rewards when it has sufficient evidence. Unresolved card rewards and other
+non-fast-path Build scenes use the scene-specific prompts in
+[`en.toml`](src/spire_agent/subagents/prompts/build/en.toml) and
+[`zh.toml`](src/spire_agent/subagents/prompts/build/zh.toml); these files are not
+used by the pure `build: llm` implementation.
+
+### MCTS search quality
+
+The `mcts` section in [config.yaml](config.yaml) controls Combat search budget.
+Increasing per-worker `simulations` and `max_time_ms` gives normal searches more
+room; `adaptive_simulations` and `adaptive_time_ms` do the same for difficult
+states.
+`threads` controls parallel workers and RNG-world coverage. A search can reach
+either its simulation or time limit, so increase both limits when one is already
+binding. Larger values can improve difficult combat decisions, but consume more
+CPU and make each action take longer; set `threads` according to the available
+CPU cores.
+
+### Map decision latency
+
+Before asking the Map LLM to rank routes, MapTool evaluates the current deck
+against representative future hallway and elite encounters, including relevant
+post-Rest projections. These deterministic readiness simulations can make Map
+decisions noticeably slower. Their small search budget is currently fixed in
+[`tools/map/readiness.py`](src/spire_agent/tools/map/readiness.py), cached within
+each run, and not exposed in `config.yaml`. The Combat `mcts` settings do not
+change this Map evaluation budget.
+
 ## Thanks
 
 - [sts_lightspeed](https://github.com/Attemory/sts_lightspeed), the fast combat
