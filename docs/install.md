@@ -1,12 +1,14 @@
 # Spire Agent installation
 
+[English](install.md) | [简体中文](install_CN.md)
+
 This guide installs Spire Agent from a fresh clone and starts a visible local
 Slay the Spire run. It covers macOS, Linux, and Windows, followed by optional
 replay and troubleshooting instructions.
 
-The repository intentionally does not contain the game, Steam Workshop JARs,
-or vendored copies of the two source dependencies. A working installation has
-four layers:
+The repository does not contain the game or Steam Workshop JAR files.
+
+A working installation has four parts:
 
 1. the Python agent in this repository;
 2. `gym-sts`, which launches and communicates with the game;
@@ -27,7 +29,7 @@ All platforms need:
 ## 2. Clone the repository
 
 ```bash
-git clone --recurse-submodules --shallow-submodules \
+git clone --recurse-submodules \
   https://github.com/AttemorySystem/spire-agent.git
 cd spire-agent
 ```
@@ -48,8 +50,6 @@ uv sync
 ```
 
 ## 4. Prepare the game and Workshop JARs
-
-Create the ignored runtime directories:
 
 ```bash
 mkdir -p runtime/lib runtime/mods
@@ -99,8 +99,8 @@ cp "$WORKSHOP_DIR/1605833019/BaseMod.jar" runtime/mods/
 cp "$WORKSHOP_DIR/2131373661/CommunicationMod.jar" runtime/mods/
 ```
 
-If Steam uses another library, replace `STEAM_ROOT` with that library's Steam
-directory.
+If the game is stored in another Steam library, change `STEAM_ROOT` and the
+other environment variables as needed.
 
 ### Linux
 
@@ -149,15 +149,12 @@ Change `$SteamRoot` when the game is stored in another Steam library.
 ## 5. Install the Java support mods
 
 `AgentStateFixes` is required for every live run and replay. It exposes state
-needed for stable decision boundaries, combat conversion, and dungeon RNG
-restoration. Running without the matching JAR is unsupported.
+needed for stable decision boundaries, combat conversion, and RNG restoration.
 
 `AgentVisualizer` is required only when `run.hud: true`.
 
-GitHub release bundles contain both platform-independent JARs under
-`runtime/mods/`. No JDK or Java build step is required when using those files.
-For a source checkout, copy the JARs from its matching release, or build them
-locally as described below.
+[GitHub Releases](https://github.com/AttemorySystem/spire-agent/releases)
+contain both JAR files. Download them and place them in `runtime/mods/`.
 
 ### Build from source (optional)
 
@@ -173,18 +170,14 @@ environment; newer JDKs also work because the scripts target Java 8 bytecode.
 
 #### Windows
 
-Run the same scripts from Git Bash or the MSYS2 UCRT64 terminal after ensuring
-the optional JDK is visible there:
+After ensuring the JDK is available, run the same scripts from Git Bash or the
+MSYS2 UCRT64 terminal:
 
 ```bash
 javac -version
 ./game_mods/agent_state_fixes/build.sh
 ./game_mods/agent_visualizer/build.sh
 ```
-
-MSYS2 converts the POSIX classpath used by the scripts for the native Windows
-JDK. If `javac` is not found, reopen the terminal after installing the JDK or
-add the JDK `bin` directory to `PATH`.
 
 All platforms should now have:
 
@@ -210,12 +203,6 @@ cmake -S 3rd/sts_lightspeed -B 3rd/sts_lightspeed/build \
   -DCMAKE_BUILD_TYPE=Release
 cmake --build 3rd/sts_lightspeed/build \
   --target battle-sim card-reward-eval -j
-```
-
-Verify the evaluator:
-
-```bash
-3rd/sts_lightspeed/build/card-reward-eval --self-test
 ```
 
 ### Windows
@@ -292,9 +279,7 @@ Supported implementation names are:
 | `run.window_size` | `WIDTHxHEIGHT`, `fullscreen` |
 | `run.hud` | `true`, `false` |
 
-Relative paths are resolved from the YAML file's directory. Map encounter
-readiness and replay/stability policy are deliberately fixed in code and are
-not configurable here.
+Relative paths are resolved from the YAML file's directory.
 
 `--config` reads YAML only; it does not load shell environment files.
 `llm.base_url` and `llm.model` may be left empty to use `MODEL_URL` and
@@ -317,13 +302,7 @@ $env:MODEL = "provider/model-name"
 $env:API_KEY = "replace-with-your-key"
 ```
 
-Never commit an API key. The map agent and LLM fallback paths still require a
-configured model and key when combat uses MCTS and card selection uses Winning
-Path.
-
-## 8. Start the first visible run
-
-Start with Ascension 0 and a numeric seed while validating a new machine:
+## 8. Start the first run
 
 ```bash
 uv run spire-agent --no-tui --character IRONCLAD --ascension 0 --seed 0
@@ -353,7 +332,7 @@ The game files are copied into `runtime/tmp/` for launch; the Steam installation
 is not modified. Bridge files and game stderr go to `runtime/out/`; both
 directories are disposable between runs.
 
-To use the terminal UI, which is now the default:
+Use the default terminal UI:
 
 ```bash
 uv run spire-agent
@@ -373,14 +352,8 @@ hud=on
 hud=off
 ```
 
-Use Up/Down to browse and edit command history; PageUp/PageDown scrolls the
-output area. HUD and display commands apply to the next launch.
-
-The default `run` command starts Ironclad A20 with a random seed. Change
-`run.window_size` in `config.yaml` to enlarge windowed runs; `1920x1080` is
-a common 16:9 choice when the display has enough space. Other aspect ratios are
-accepted, though ultrawide displays are letterboxed by the game. The setting
-applies to the next launch. Fullscreen runs use the active display resolution.
+Use Up/Down to browse and edit command history, and use `PageUp`/`PageDown` to
+scroll the output area. HUD and display commands apply to the next launch.
 
 ## 9. Display mode and HUD
 

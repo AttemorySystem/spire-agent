@@ -1,22 +1,26 @@
 # Spire Agent
 
+[English](README.md) | [简体中文](README_CN.md)
+
 **Spire Agent — an autonomous Slay the Spire agent.**
 
 ## Highlights
 
-- **Minimal harness.** Small agents route stable game states; complexity lives
-  in external tools.
-- **Deterministic first.** Policies and MCTS handle repeatable decisions; LLMs
-  are reserved for choices that need contextual judgment.
-- **Improves over runs.** Every run is recorded and replayable, becoming fixed
-  regression evidence for the next policy improvement.
+- **Minimal framework.** A minimal agent framework makes logic and actions easy
+  to customize, while independent, pluggable tools contain complex domain
+  logic.
+- **Deterministic first.** The harness handles everything that can be implemented
+  deterministically, minimizing uncertainty from LLM inference. Only complex
+  judgments are delegated to an LLM.
+- **Improves with every run.** Every run is fully recorded and replayable,
+  becoming fixed test evidence for later policy improvements.
 
 ## Current status
 
 - Characters: Ironclad and Defect
 - Platforms: Linux and macOS tested; Windows untested
 - Current results:
-    - Ironclad: several Ascension 20 Heart wins with GPT-5.6 Luna ([video](https://www.bilibili.com/video/BV1ewuo66EP7/))
+    - Ironclad: several Ascension 20 Heart wins ([video](https://www.bilibili.com/video/BV1ewuo66EP7/))
     - Defect: reached the Act 4 stage multiple times
 
 ![Spire Agent playing Slay the Spire](docs/assets/demo.gif)
@@ -56,18 +60,18 @@ state, decision, LLM call, and MCTS search is written under `runs/<seed>/`; the
 same run can be reproduced from its replay journal.
 
 `EvolveAgent` is the offline improvement loop. It turns accumulated run logs
-into fixed evaluation datasets and proposes bounded Winning Path changes. This
-works because improvement has a fixed acceptance test: the new policy is
-compared with the current policy on the same historical choices and MCTS combat
-checkpoints, including whether its rebuilt deck can defeat the enemies and Act
-bosses reached by the original run—and the encounter that ended it. Only
-measurable gains without benchmark regressions are promoted to the card picker.
+into fixed evaluation datasets and optimizes the deck-building algorithm within
+a fixed parameter space. Every improvement has a fixed acceptance test: the new
+policy is compared with the current policy on the same historical choices and
+MCTS combat checkpoints, including whether its rebuilt deck can defeat the
+enemies and Act bosses reached by the original run—and the encounter that ended
+it. Only measurable gains without benchmark regressions are merged into the
+production card picker.
 
 ## Install
 
-Spire Agent requires a licensed Steam copy of Slay the Spire. Linux and macOS
-are tested; Windows has not yet been tested. Install the game and subscribe to
-ModTheSpire, BaseMod, and CommunicationMod, then clone the agent:
+Spire Agent requires Slay the Spire. Install the game and subscribe to
+ModTheSpire, BaseMod, and CommunicationMod on Steam, then clone the repository:
 
 ```bash
 git clone --recurse-submodules https://github.com/AttemorySystem/spire-agent.git
@@ -77,8 +81,9 @@ mkdir -p runtime/lib runtime/mods
 ```
 
 Copy `desktop-1.0.jar` and `ModTheSpire.jar` to `runtime/lib/`, and copy
-`BaseMod.jar` and `CommunicationMod.jar` to `runtime/mods/`. Then build both C++
-tools in one invocation:
+`BaseMod.jar` and `CommunicationMod.jar` to `runtime/mods/`.
+
+Then build `sts_lightspeed`:
 
 ```bash
 cmake -S 3rd/sts_lightspeed -B 3rd/sts_lightspeed/build \
@@ -91,13 +96,15 @@ Download `AgentStateFixes.jar` and `AgentVisualizer.jar` from the
 [GitHub Releases](https://github.com/AttemorySystem/spire-agent/releases) page
 and place both files in `runtime/mods/`.
 
-Set the model in [config.yaml](config.yaml), export `API_KEY`, and follow the
-[detailed installation guide](docs/install.md) for platform prerequisites,
-exact Steam paths, verification, and troubleshooting.
+Set the model in [config.yaml](config.yaml) and set the `API_KEY` environment
+variable.
+
+The [detailed installation guide](docs/install.md) covers platform
+prerequisites, Steam paths, installation verification, and troubleshooting.
 
 ## How to run
 
-Review [config.yaml](config.yaml), then start the terminal UI:
+Configure [config.yaml](config.yaml), then start the terminal UI:
 
 ```bash
 uv run spire-agent
@@ -121,10 +128,10 @@ hud=on                      # Enable the in-game agent HUD
 hud=off                     # Disable the in-game agent HUD
 ```
 
-Press `Ctrl+D` to exit. Use Up/Down to edit command history and
-PageUp/PageDown to scroll the output.
+Press `Ctrl+D` to exit. Use Up/Down to browse and edit command history, and use
+`PageUp`/`PageDown` to scroll the output.
 
-To run directly without the terminal UI:
+To run without the TUI:
 
 ```bash
 uv run spire-agent --no-tui
@@ -132,28 +139,31 @@ uv run spire-agent --no-tui
 
 ## Agents
 
-All three agents receive a stable `DecisionRequest` and return one legal
-`Decision`. Their tools are injected behind that boundary, so an implementation
-can be replaced without changing `GameAgent` or replay.
+We divide the game into three decision units: map, build, and combat. One agent
+owns each unit. At the code level, all three agents receive a stable
+`DecisionRequest` and return one legal `Decision`. Tools are injected behind
+this boundary, so an implementation can be replaced without changing
+`GameAgent` or any other module.
 
 - **Map Agent** uses an LLM because route selection depends on contextual
   tradeoffs that are difficult to reduce to one fixed score. It evaluates
   complete routes to the Act boss. Deterministic gates
   preserve keys and reject unsupported consecutive fights using current-deck
-  simulations; the LLM ranks the remaining routes by growth, recovery, Shops,
+  simulations; the LLM ranks the remaining routes by growth, recovery, shops,
   and Act-specific risk.
-- **Build Agent** owns deck construction as well as shops, events, and rest
-  sites. Instead of using a neural network to predict individual card picks,
-  its default Winning Path picker searches a sparse graph of expert
+
+- **Build Agent** owns deck construction, relic selection, shops, events, and
+  rest sites. Instead of using a neural network to predict individual card
+  picks, its default Winning Path picker searches a sparse graph of expert
   winning-deck templates. Template distance, immediate survival needs, and
-  contextual expert choices drive deterministic picks and skips; the LLM
-  handles only unresolved frontiers.
+  contextual expert choices determine whether to pick or skip; some unresolved
+  candidates still require a final judgment from the LLM.
+
 - **Combat Agent** receives the complete combat state. Its default tool searches
-  `sts_lightspeed` with MCTS, which already plays combat effectively, and returns
-  one root action plus any required card selections. Potions are first withheld,
-  then selectively exposed to MCTS when the no-potion search predicts excessive
-  HP loss. Some game-specific compatibility handling remains and is still being
-  simplified.
+  `sts_lightspeed` with MCTS and returns one root action plus any required card
+  selections. Potions are first withheld, then selectively exposed to MCTS when
+  the no-potion search predicts excessive HP loss. The current implementation
+  still contains some dirty hacks that need cleanup.
 
 Select implementations under `agents` in [config.yaml](config.yaml).
 
@@ -162,7 +172,7 @@ Select implementations under `agents` in [config.yaml](config.yaml).
 - [sts_lightspeed](https://github.com/Attemory/sts_lightspeed), the fast combat
   simulator and tree-search engine.
 - [gym-sts](https://github.com/Attemory/gym-sts), the Slay the Spire game and
-  CommunicationMod bridge;
+  CommunicationMod bridge.
 
 Special thanks to [Baalorlord](https://baalorlord.tv/) for publishing his run
 archive. Its expert card-choice history provides important evidence and
