@@ -115,6 +115,40 @@ class WinningPathLiveTests(unittest.TestCase):
             "MISSING_PREREQUISITE",
         )
 
+    def test_defectxx08_does_not_treat_consume_as_slot_free_focus(self):
+        deck = (
+            "Aggregate", "Ascender's Bane", "Ball Lightning", "Beam Cell",
+            "Blizzard", "Chaos", "Coolheaded", "Core Surge",
+            "Doom and Gloom", "Dualcast", "Genetic Algorithm", "Hologram",
+            "Hologram", "Overclock", "Rainbow", "Reinforced Body",
+            "Reinforced Body", "Static Discharge", "Streamline", "Zap",
+        )
+        result = _defect_reward(
+            deck,
+            ("Claw", "Stack", "Consume"),
+            act=2,
+            floor=28,
+            boss="Automaton",
+        )
+
+        self.assertEqual(result["command"], "skip")
+        self.assertEqual(result["candidates"][2]["template"]["level"], "NONE")
+
+    def test_defect_consume_still_advances_orb_capacity(self):
+        result = _defect_reward(
+            ("Zap", "Dualcast", "Coolheaded", "Cold Snap", "Capacitor"),
+            ("Claw", "Stack", "Consume"),
+            act=2,
+            floor=20,
+            boss="Automaton",
+        )
+
+        self.assertEqual(result["command"], "choose 2")
+        self.assertEqual(
+            result["candidates"][2]["template"]["route_id"],
+            "orb_capacity_scaling",
+        )
+
     def test_defect_data_disk_and_two_frost_sources_complete_focus_frost(self):
         result = _defect_reward(
             (

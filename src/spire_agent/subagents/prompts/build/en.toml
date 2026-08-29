@@ -61,7 +61,8 @@ do not buy merely to spend gold. Re-evaluate after every confirmed purchase.
 Continue the plan stated in earlier room messages when it is still affordable
 and useful; if more actions are intended, summarize their order in reason.
 If choosing card removal, include its exact target. Potion slots are not managed
-in this version: do not buy or discard a potion.
+in this version: do not buy or discard a potion. Ascender's Bane, Curse of the
+Bell, and Necronomicurse cannot be removed and must never be removal targets.
 """
 
 [boss_reward]

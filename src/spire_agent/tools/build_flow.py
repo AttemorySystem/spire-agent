@@ -336,12 +336,13 @@ def _continue_selection(request: DecisionRequest) -> Decision | None:
             "confirm the completed Build selection",
             continuation=ContinuationChange.clear(),
         )
-    wanted = _normalize_name(targets[0])
+    wanted = _normalize_name(targets[0]).removesuffix("+")
     choice_id = next(
         (
             index
             for index, choice in enumerate(state.screen.choices)
-            if index not in used and _normalize_name(_choice_label(choice)) == wanted
+            if index not in used
+            and _normalize_name(_choice_label(choice)).removesuffix("+") == wanted
         ),
         None,
     )

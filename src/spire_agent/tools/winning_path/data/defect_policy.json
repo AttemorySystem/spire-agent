@@ -226,8 +226,7 @@
                     "group": {
                       "cards": [
                         "Defragment",
-                        "Biased Cognition",
-                        "Consume"
+                        "Biased Cognition"
                       ],
                       "minimum_distinct": 1,
                       "minimum_total_copies": 1
@@ -401,8 +400,7 @@
                 "group": {
                   "cards": [
                     "Defragment",
-                    "Biased Cognition",
-                    "Consume"
+                    "Biased Cognition"
                   ],
                   "minimum_distinct": 1,
                   "minimum_total_copies": 1
@@ -428,8 +426,7 @@
                 "group": {
                   "cards": [
                     "Defragment",
-                    "Biased Cognition",
-                    "Consume"
+                    "Biased Cognition"
                   ],
                   "minimum_distinct": 1,
                   "minimum_total_copies": 2

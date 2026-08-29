@@ -820,6 +820,34 @@ class BuildAgentTests(unittest.TestCase):
             ("Necronomicurse",),
         )
 
+    def test_legalized_purge_target_matches_its_upgraded_grid_copy(self):
+        llm = FakeLLM(
+            [response(choice_id=0, targets=("Ascender's Bane",))]
+        )
+        shop = build_state(
+            "SHOP_SCREEN",
+            commands=("choose", "leave"),
+            choices=("purge",),
+            facts={
+                "deck": (
+                    {"name": "Ascender's Bane"},
+                    {"name": "Zap", "upgrades": 1},
+                    {"name": "Force Field", "upgrades": 1},
+                )
+            },
+        )
+
+        purge = create_build_agent(llm).decide(request(shop))
+        grid = build_state("GRID", choices=("Zap+", "Force Field+"))
+        selected = create_build_agent(llm).decide(
+            request(grid, purge.continuation.value)
+        )
+
+        self.assertEqual(purge.payload["targets"], ("Zap",))
+        self.assertEqual(selected.command, "choose 0")
+        self.assertEqual(selected.source, "build.selection")
+        self.assertEqual(len(llm.requests), 1)
+
     def test_missing_selection_target_uses_the_visible_grid(self):
         llm = FakeLLM([response(choice_id=0)])
         state = build_state("GRID", choices=("Strike", "Defend"))

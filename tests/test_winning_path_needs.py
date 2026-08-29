@@ -11,6 +11,7 @@ from spire_agent.tools.winning_path.needs import (
     load_encounter_model,
     plan_targets,
 )
+from spire_agent.tools.winning_path.plan import analyze_deck_plan
 from spire_agent.tools.winning_path.resolver import resolve
 
 from tests.test_winning_path_resolver import _catalog, _decisive_core
@@ -113,6 +114,40 @@ class WinningPathNeedTests(unittest.TestCase):
         self.assertIn("SCALING_DAMAGE", profile.blocking_deficits)
         self.assertEqual(coverage[0], ("IMMEDIATE_BLOCK",))
         self.assertEqual(coverage[1], ())
+
+    def test_dynamic_genetic_module_does_not_claim_static_scaling_block(self):
+        base = _state(
+            act=2,
+            boss="Champ",
+            character="DEFECT",
+            deck=("Genetic Algorithm", "Hologram"),
+            route={"planned_rooms": ["Boss"]},
+        )
+        catalog = load_default_catalog("DEFECT")
+        plan = analyze_deck_plan(base, catalog)
+        profile = analyze_need_profile(base, catalog)
+
+        self.assertIn("genetic_scaling_block", plan.active_modules)
+        self.assertIn("genetic_scaling_block", plan.dynamic_verification_required)
+        self.assertNotIn("SCALING_DEFENSE", profile.current_capabilities)
+        self.assertIn("SCALING_DEFENSE", profile.blocking_deficits)
+
+    def test_dynamic_module_does_not_hide_static_scaling_block(self):
+        state = _state(
+            act=2,
+            boss="Champ",
+            character="DEFECT",
+            deck=(
+                "Genetic Algorithm", "Hologram", "Defragment",
+                "Cold Snap", "Coolheaded",
+            ),
+            route={"planned_rooms": ["Boss"]},
+        )
+
+        profile = analyze_need_profile(state, load_default_catalog("DEFECT"))
+
+        self.assertIn("SCALING_DEFENSE", profile.current_capabilities)
+        self.assertNotIn("SCALING_DEFENSE", profile.blocking_deficits)
 
     def test_blocking_need_has_first_authority(self):
         state = _state(
