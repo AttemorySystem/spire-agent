@@ -110,10 +110,15 @@ liars_game = """
 才接受金币与诅咒；否则选择 Disagree。
 """
 mind_bloom = """
-这是 Mind Bloom。除非当前状态能证明至少 2 层 Omamori 会阻止两张 Normality，或下一场战斗前
-肯定能删掉两张诅咒，否则不得选择 I am Rich。消耗协同、Elixir、999 金币本身和未确认的
-未来商店都不能证明诅咒是安全的。根据当前 HP、牌组强度、升级收益和永久无法恢复的代价比较
+这是 Mind Bloom。除非当前状态能证明至少 2 层 Omamori 会阻止两张 Normality，否则不得选择
+I am Rich。消耗协同、Elixir、999 金币本身和未来商店都不能证明诅咒是安全的。根据当前 HP、
+牌组强度、升级收益和永久无法恢复的代价比较
 I am War 与 I am Awake；Act 1 Boss 战不是未知效果。
+"""
+council_of_ghosts = """
+这是 Council of Ghosts。本次提供的 Apparition 只能提供短期启动窗口，不能替代长期防御。
+界面显示的 Max HP 损失和新增卡牌都是实际代价。choice_policy 只是证据而非结论；需要比较
+启动需求、抽取可靠性、已有防御和明确的升级收益。
 """
 dead_adventurer = """
 这是 Dead Adventurer。Search 可能立即进入精英战；只有当前 HP 至少为最大 HP 的 80%，并且牌组

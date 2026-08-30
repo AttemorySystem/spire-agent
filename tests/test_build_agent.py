@@ -15,8 +15,7 @@ from spire_agent.contracts import (
 )
 from spire_agent.subagents.build import create_build_agent as compose_build_agent
 from spire_agent.subagents.build_prompt import build_prompt
-from spire_agent.tools.boss_relics import build_choice_policy
-from spire_agent.tools.build_flow import BuildError
+from spire_agent.tools.build_flow import BuildError, build_choice_policy
 from spire_agent.tools.winning_path.card_policy import review_shop
 from spire_agent.subagents.build_context import (
     RUN_CONSTRUCTION_KEY,
@@ -892,6 +891,7 @@ class BuildAgentTests(unittest.TestCase):
             "Golden Idol": "golden_idol",
             "Liar's Game": "liars_game",
             "Mind Bloom": "mind_bloom",
+            "Council of Ghosts": "council_of_ghosts",
             "Dead Adventurer": "dead_adventurer",
             "Knowing Skull": "knowing_skull",
             "Match and Keep!": "match_and_keep",
@@ -934,6 +934,209 @@ class BuildAgentTests(unittest.TestCase):
         self.assertEqual(rule["key"], "mind_bloom")
         self.assertIn("Never choose I am Rich", rule["prompt"])
         self.assertIn("Normality", rule["prompt"])
+
+    def test_mind_bloom_capabilities_are_evidence_not_forced(self):
+        llm = FakeLLM([response(choice_id=1)])
+
+        decision = create_build_agent(llm).decide(request(
+            self._mind_bloom_state(),
+            shared={
+                RUN_CONSTRUCTION_KEY: {
+                    "capabilities": ("SUSTAIN", "SCALING_DEFENSE"),
+                    "modules": {"committed": ("self_repair_sustain",)},
+                },
+                "run_route": {"future_rests": 4},
+            },
+        ))
+
+        self.assertEqual(decision.command, "choose 1")
+        self.assertEqual(decision.source, "build.llm")
+        policy = prompt_payload(llm.requests[0])["choice_policy"]
+        self.assertEqual(policy["classification"], "MIND_BLOOM_REVIEW")
+        self.assertEqual(policy["legal_choice_ids"], [0, 1])
+        self.assertTrue(policy["evidence"]["sustain_present"])
+        self.assertEqual(policy["evidence"]["future_rests"], 4)
+
+    def test_mind_bloom_requires_two_omamori_charges_for_rich(self):
+        cases = (
+            ((), (0, 1), 0),
+            (({"name": "Omamori"},), (0, 1), 0),
+            (({"name": "Omamori", "counter": 0},), (0, 1), 0),
+            (({"name": "Omamori", "counter": 1},), (0, 1), 1),
+            (({"name": "Omamori", "counter": 2},), (0, 1, 2), 2),
+        )
+        for relics, legal, charges in cases:
+            with self.subTest(relics=relics):
+                policy = build_choice_policy(request(
+                    self._mind_bloom_state(relics=relics)
+                ))
+                self.assertEqual(policy["legal_choice_ids"], legal)
+                self.assertEqual(policy["evidence"]["omamori_charges"], charges)
+
+    def test_event_policy_uses_ids_when_display_text_is_localized(self):
+        mind_bloom = build_state(
+            "EVENT",
+            choices=(
+                "localized option 0",
+                "localized option 1",
+                "localized option 2",
+            ),
+            details={"event_id": "MindBloom", "event_name": "localized event"},
+            facts={
+                "floor": 35,
+                "relics": (
+                    {"id": "Omamori", "name": "localized relic", "counter": 1},
+                ),
+            },
+        )
+        ghosts = build_state(
+            "EVENT",
+            choices=("localized option 0", "localized option 1"),
+            details={"event_id": "Ghosts", "event_name": "localized event"},
+            facts={"current_hp": 57, "max_hp": 71, "ascension_level": 14},
+        )
+
+        mind_policy = build_choice_policy(request(mind_bloom))
+        ghosts_policy = build_choice_policy(request(ghosts))
+
+        self.assertEqual(mind_policy["legal_choice_ids"], (0, 1))
+        self.assertEqual(mind_policy["evidence"]["healing_lock_choice_id"], 1)
+        self.assertEqual(mind_policy["evidence"]["omamori_charges"], 1)
+        self.assertEqual(ghosts_policy["legal_choice_ids"], (0, 1))
+        self.assertEqual(ghosts_policy["evidence"]["apparition_count"], 5)
+        self.assertEqual(ghosts_policy["evidence"]["projected_max_hp"], 35)
+
+    def test_mark_of_the_bloom_does_not_force_optional_event_fight_choice(self):
+        llm = FakeLLM([response(choice_id=0)])
+        state = build_state(
+            "EVENT",
+            choices=("open sphere", "leave"),
+            details={
+                "event_name": "Mysterious Sphere",
+                "options": (
+                    {"choice_index": 0, "text": "[Open Sphere] Fight 2 Orb Walkers."},
+                    {"choice_index": 1, "text": "[Leave]"},
+                ),
+            },
+            facts={"relics": ({"name": "Mark of the Bloom"},)},
+        )
+
+        decision = create_build_agent(llm).decide(request(state))
+
+        self.assertEqual(decision.command, "choose 0")
+        self.assertEqual(decision.source, "build.llm")
+        self.assertNotIn("choice_policy", prompt_payload(llm.requests[0]))
+
+    def test_apparition_capabilities_are_non_binding_evidence(self):
+        cases = (
+            (
+                ("DRAW_CONSISTENCY", "IMMEDIATE_BLOCK", "SCALING_DEFENSE"),
+                ("AOE",), (), {}, 3,
+            ),
+            (
+                ("DRAW_CONSISTENCY", "SCALING_DEFENSE"),
+                ("IMMEDIATE_BLOCK",), (), {}, 3,
+            ),
+            (
+                ("DRAW_CONSISTENCY", "IMMEDIATE_BLOCK"),
+                ("SCALING_DEFENSE",), (), {}, 3,
+            ),
+            (
+                ("SCALING_DEFENSE",), (), ("Toxic Egg",), {}, 5,
+            ),
+            (
+                ("DRAW_CONSISTENCY", "SCALING_DEFENSE"),
+                ("IMMEDIATE_BLOCK",), (), {
+                    "encounter_readiness": {
+                        "entry_hp": 57,
+                        "groups": {"ELITE": {
+                            "status": "SUPPORTED",
+                            "expected_end_hp_on_win": 10,
+                        }},
+                    }
+                }, 3,
+            ),
+        )
+        for capabilities, deficits, relics, route, count in cases:
+            with self.subTest(capabilities=capabilities, count=count):
+                policy = build_choice_policy(request(
+                    self._ghosts_state(
+                        relics=relics,
+                        ascension=14 if count == 5 else 20,
+                    ),
+                    shared={
+                        RUN_CONSTRUCTION_KEY: {
+                            "capabilities": capabilities,
+                            "deficits": deficits,
+                        },
+                        "run_route": route,
+                    },
+                ))
+                self.assertEqual(policy["classification"], "APPARITION_REVIEW")
+                self.assertEqual(policy["legal_choice_ids"], (0, 1))
+                self.assertEqual(policy["evidence"]["apparition_count"], count)
+                self.assertEqual(policy["evidence"]["projected_max_hp"], 35)
+
+    def test_apparition_fit_remains_an_llm_decision(self):
+        llm = FakeLLM([response(choice_id=0)])
+        decision = create_build_agent(llm).decide(request(
+            self._ghosts_state(),
+            shared={
+                RUN_CONSTRUCTION_KEY: {
+                    "capabilities": ("DRAW_CONSISTENCY", "SCALING_DAMAGE"),
+                    "deficits": ("IMMEDIATE_BLOCK",),
+                }
+            },
+        ))
+
+        self.assertEqual(decision.command, "choose 0")
+        self.assertEqual(decision.source, "build.llm")
+        policy = prompt_payload(llm.requests[0])["choice_policy"]
+        self.assertEqual(policy["classification"], "APPARITION_REVIEW")
+        self.assertEqual(policy["legal_choice_ids"], [0, 1])
+
+    @staticmethod
+    def _mind_bloom_state(*, relics=()):
+        return build_state(
+            "EVENT",
+            choices=("i am war", "i am awake", "i am rich"),
+            details={
+                "event_name": "Mind Bloom",
+                "options": (
+                    {"choice_index": 0, "text": "[I am War] Fight an Act 1 Boss."},
+                    {"choice_index": 1, "text": "[I am Awake] You can no longer heal."},
+                    {"choice_index": 2, "text": "[I am Rich] Gain 2 Normality."},
+                ),
+            },
+            facts={"floor": 35, "relics": relics},
+        )
+
+    @staticmethod
+    def _ghosts_state(*, relics=(), ascension=20):
+        count = 3 if ascension >= 15 else 5
+        return build_state(
+            "EVENT",
+            choices=("accept", "refuse"),
+            details={
+                "event_id": "Ghosts",
+                "event_name": "Council of Ghosts",
+                "options": (
+                    {
+                        "choice_index": 0,
+                        "text": (
+                            f"[Accept] Receive {count} Apparition. Lose 36 Max HP."
+                        ),
+                    },
+                    {"choice_index": 1, "text": "[Refuse]"},
+                ),
+            },
+            facts={
+                "current_hp": 57,
+                "max_hp": 71,
+                "ascension_level": ascension,
+                "relics": tuple({"name": relic} for relic in relics),
+            },
+        )
 
     def test_event_prompt_uses_scene_section_and_compact_state(self):
         llm = FakeLLM([response(choice_id=1)])

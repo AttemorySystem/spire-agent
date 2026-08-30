@@ -145,11 +145,17 @@ preserving a concrete purchase. Otherwise disagree.
 """
 mind_bloom = """
 This is Mind Bloom. Never choose I am Rich unless the current state proves
-that both Normality curses will be prevented by at least 2 Omamori charges, or
-that both can be removed before the next combat. Exhaust synergy, Elixir, the
-999 gold itself, and an unconfirmed future shop do not make the curses safe.
+that both Normality curses will be prevented by at least 2 Omamori charges.
+Exhaust synergy, Elixir, the 999 gold itself, and a future shop do not make the
+curses safe.
 Compare I am War and I am Awake using current HP, deck strength, upgrades, and
 the permanent loss of healing; do not treat the Act 1 boss fight as unknown.
+"""
+council_of_ghosts = """
+This is Council of Ghosts. The offered Apparitions buy a temporary setup window;
+they do not provide scaling defense. Treat the displayed Max HP loss and added
+cards as real costs. choice_policy is evidence, not a verdict: compare startup
+need, access reliability, existing defense, and explicit upgrade benefits.
 """
 dead_adventurer = """
 This is Dead Adventurer. Search can immediately start an elite fight. Search

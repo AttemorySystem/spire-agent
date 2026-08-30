@@ -15,7 +15,8 @@ from spire_agent.contracts import (
     DecisionRequest,
     GameState,
 )
-from spire_agent.tools.events import event_rule, forced_event_choice
+from spire_agent.tools.boss_relics import boss_relic_policy
+from spire_agent.tools.events import event_choice_policy, event_rule, forced_event_choice
 from spire_agent.tools.run_keys import key_view, rest_policy, reward_key
 from spire_agent.subagents.build_context import (
     BUILD_EXCHANGE_KEY,
@@ -45,6 +46,18 @@ BUILD_ACTION_SCHEMA = {
     "required": ["action", "choice_id", "targets", "reason"],
     "additionalProperties": False,
 }
+
+
+def build_choice_policy(request: DecisionRequest) -> dict[str, object] | None:
+    """Combine independent non-card choice constraints for BuildAgent."""
+
+    return (
+        event_choice_policy(request.state, request.shared)
+        or boss_relic_policy(request)
+        or rest_policy(request)
+    )
+
+
 _SELECT_MARKERS = (
     "choose a card",
     "remove a card",
@@ -703,6 +716,7 @@ def _nonnegative_int(value: object) -> int:
 __all__ = [
     "BUILD_ACTION_SCHEMA",
     "BuildError",
+    "build_choice_policy",
     "continue_build",
     "fast_decision",
     "llm_decision",

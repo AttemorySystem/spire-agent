@@ -54,7 +54,7 @@ from spire_agent.subagents import (
     create_combat_agent,
     create_map_agent,
 )
-from spire_agent.tools.boss_relics import build_choice_policy
+from spire_agent.tools.build_flow import build_choice_policy
 from spire_agent.tools.map import DefaultMapTool, EncounterReadiness
 from spire_agent.tools.mcts import CombatMCTS, DefaultCombatTool, PotionGate
 from spire_agent.tools.llm_agents import (

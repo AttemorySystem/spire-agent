@@ -11,7 +11,7 @@ from spire_agent.tools.run_keys import route_threat
 
 
 _RULES = {
-    "neow": ("neow",),
+    "neow": ("neow", "neow event"),
     "the_nest": ("the nest", "nest"),
     "nloth": ("n loth", "nloth"),
     "woman_in_blue": ("the woman in blue", "woman in blue"),
@@ -19,6 +19,7 @@ _RULES = {
     "golden_idol": ("golden idol",),
     "liars_game": ("liars game", "liar s game"),
     "mind_bloom": ("mind bloom", "mindbloom"),
+    "council_of_ghosts": ("council of ghosts", "ghosts"),
     "dead_adventurer": ("dead adventurer",),
     "knowing_skull": ("knowing skull",),
     "match_and_keep": ("match and keep",),
@@ -30,11 +31,13 @@ def event_rule(state: GameState) -> str | None:
 
     if state.screen.type != "EVENT":
         return None
-    name = _event_name(state.screen.details)
-    if not name:
-        return None
-    for key, names in _RULES.items():
-        if any(name == _normalize(alias) for alias in names):
+    identifiers = {
+        _normalize(state.screen.details.get(field))
+        for field in ("event_id", "event_name", "event", "name")
+        if state.screen.details.get(field)
+    }
+    for key, aliases in _RULES.items():
+        if any(_normalize(alias) in identifiers for alias in aliases):
             return key
     return None
 
@@ -84,6 +87,88 @@ def forced_event_choice(
     return safe[0] if forbidden and safe else None
 
 
+def event_choice_policy(
+    state: GameState, shared: Mapping[str, object] | None = None
+) -> dict[str, object] | None:
+    """Constrain irreversible event trades using explicit run evidence."""
+
+    if state.screen.type != "EVENT" or "choose" not in state.screen.commands:
+        return None
+    shared = shared or {}
+    choice_count = len(state.screen.choices)
+    relics = {_entity_id(item) for item in state.facts.get("relics") or ()}
+
+    def policy(
+        legal: Sequence[int], classification: str, reason: str, **evidence: object
+    ) -> dict[str, object]:
+        return {
+            "legal_choice_ids": tuple(legal),
+            "classification": classification,
+            "reason": reason,
+            "evidence": evidence,
+        }
+
+    construction = shared.get("run_construction")
+    construction = construction if isinstance(construction, Mapping) else {}
+    capabilities = set(map(str, construction.get("capabilities") or ()))
+    deficits = set(map(str, construction.get("deficits") or ()))
+    rule = event_rule(state)
+    if rule == "mind_bloom":
+        awake = 1 if choice_count > 1 else None
+        floor = int(_number(state.facts.get("floor")))
+        rich = 2 if floor <= 40 and choice_count > 2 else None
+        legal = set(range(choice_count))
+        charges = _relic_counter(state, "omamori")
+        route = shared.get("run_route")
+        if charges < 2 and rich is not None:
+            legal.discard(rich)
+        return policy(
+            sorted(legal),
+            "MIND_BLOOM_REVIEW",
+            "compare upgrade value, permanent healing loss, and the safe legal options",
+            healing_lock_choice_id=awake,
+            sustain_present="SUSTAIN" in capabilities,
+            future_rests=(
+                _number(route.get("future_rests"))
+                if isinstance(route, Mapping) else 0
+            ),
+            omamori_charges=charges,
+        )
+    if rule != "council_of_ghosts":
+        return None
+
+    if choice_count < 2:
+        return None
+    accept, refuse = 0, 1
+    maximum = int(_number(state.facts.get("max_hp")))
+    loss = min(maximum - 1, (maximum + 1) // 2) if maximum > 0 else 0
+    projected_max = max(1, maximum - loss)
+    projected_hp = min(int(_number(state.facts.get("current_hp"))), projected_max)
+    offered = 3 if int(_number(state.facts.get("ascension_level"))) >= 15 else 5
+    immediate = "IMMEDIATE_BLOCK" in capabilities
+    scaling = "SCALING_DEFENSE" in capabilities
+    draw = "DRAW_CONSISTENCY" in capabilities
+    toxic_egg = "toxic egg" in relics
+    return policy(
+        (accept, refuse),
+        "APPARITION_REVIEW",
+        "Apparitions are temporary defense; static capability evidence is non-binding",
+        apparition_count=offered,
+        projected_hp=projected_hp,
+        projected_max_hp=projected_max,
+        immediate_block=(
+            "SATISFIED" if immediate else
+            "DEFICIT" if "IMMEDIATE_BLOCK" in deficits else "UNKNOWN"
+        ),
+        scaling_defense=(
+            "SATISFIED" if scaling else
+            "DEFICIT" if "SCALING_DEFENSE" in deficits else "UNKNOWN"
+        ),
+        draw_consistency="SATISFIED" if draw else "UNKNOWN",
+        toxic_egg=toxic_egg,
+    )
+
+
 def _survival_choice(state: GameState, shared: Mapping[str, object]) -> int | None:
     """Reject visible HP loss when it lowers entry HP for an at-risk fight."""
 
@@ -104,7 +189,7 @@ def _survival_choice(state: GameState, shared: Mapping[str, object]) -> int | No
         return None
     current = int(_number(state.facts.get("current_hp")))
     maximum = int(_number(state.facts.get("max_hp")))
-    relics = {_normalize(_choice_label(item)) for item in state.facts.get("relics") or ()}
+    relics = {_entity_id(item) for item in state.facts.get("relics") or ()}
 
     def projected(cost: tuple[int, int]) -> int:
         loss, max_gain = cost
@@ -174,12 +259,22 @@ def _number(value: object) -> float:
         return 0.0
 
 
-def _event_name(details: Mapping[str, object]) -> str:
-    for key in ("event_name", "event", "name", "event_id"):
-        value = details.get(key)
-        if value:
-            return _normalize(value)
-    return ""
+def _relic_counter(state: GameState, name: str) -> int:
+    for relic in state.facts.get("relics") or ():
+        if isinstance(relic, Mapping) and _entity_id(relic) == name:
+            counter = relic.get("counter")
+            return (
+                counter
+                if isinstance(counter, int) and not isinstance(counter, bool)
+                else 0
+            )
+    return 0
+
+
+def _entity_id(value: object) -> str:
+    if isinstance(value, Mapping):
+        value = value.get("id") or value.get("name") or value.get("value")
+    return _normalize(value)
 
 
 def _choice_label(value: object) -> str:
@@ -192,4 +287,4 @@ def _normalize(value: object) -> str:
     return re.sub(r"[^a-z0-9]+", " ", str(value or "").casefold()).strip()
 
 
-__all__ = ["event_rule", "forced_event_choice"]
+__all__ = ["event_choice_policy", "event_rule", "forced_event_choice"]

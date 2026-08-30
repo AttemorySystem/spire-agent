@@ -5,7 +5,6 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 
 from spire_agent.contracts import DecisionRequest
-from spire_agent.tools.run_keys import rest_policy
 
 
 _HEALING_CARDS = frozenset({"bandage up", "bite", "reaper", "self repair"})
@@ -68,12 +67,6 @@ def boss_relic_policy(request: DecisionRequest) -> dict[str, object] | None:
     }
 
 
-def build_choice_policy(request: DecisionRequest) -> dict[str, object] | None:
-    """Combine independent non-card choice constraints for BuildAgent."""
-
-    return boss_relic_policy(request) or rest_policy(request)
-
-
 def _names(value: object) -> set[str]:
     return {
         name
@@ -96,4 +89,4 @@ def _sequence(value: object) -> Sequence[object]:
     )
 
 
-__all__ = ["boss_relic_policy", "build_choice_policy"]
+__all__ = ["boss_relic_policy"]
