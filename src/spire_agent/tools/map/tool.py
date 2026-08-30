@@ -532,12 +532,14 @@ def _route_facts(
         if len(live) != 1:
             break
         current = live[0]
+    forced_rooms = [row["room"] for row in segment]
     result = {
         "rest_reachable": any(
             nodes[node][0] == "R" for node in reachable if node != root
         ),
         "burning_elite_reachable": any(nodes[node][0] == "E*" for node in reachable),
-        **_route_counts(row["room"] for row in segment),
+        **_route_counts(forced_rooms),
+        "forced_shop_count": forced_rooms.count("$"),
         "forced_segment": segment,
     }
     if reaches_boss:

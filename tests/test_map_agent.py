@@ -432,7 +432,52 @@ class ConcreteMapAgentTests(unittest.TestCase):
 
         prompt = client.requests[0].messages[-1].content
         self.assertIn("unspent gold as unrealized power", prompt)
-        self.assertIn("do not avoid a reachable Shop", prompt)
+        self.assertIn("at most one funded Shop per Act", prompt)
+        self.assertIn("never reject an otherwise safer route", prompt)
+        self.assertIn("future gold as uncertain", prompt)
+
+    def test_zero_gold_route_evidence_exposes_two_forced_shops(self):
+        nodes = [
+            {"x": 0, "y": 0, "symbol": "M", "children": [{"x": 0, "y": 1}]},
+            {"x": 0, "y": 1, "symbol": "?", "children": [{"x": 3, "y": 16}]},
+            {"x": 1, "y": 0, "symbol": "M", "children": [{"x": 1, "y": 1}]},
+            {"x": 1, "y": 1, "symbol": "$", "children": [{"x": 1, "y": 2}]},
+            {"x": 1, "y": 2, "symbol": "M", "children": [{"x": 1, "y": 3}]},
+            {"x": 1, "y": 3, "symbol": "$", "children": [{"x": 3, "y": 16}]},
+            {
+                "x": 2,
+                "y": 0,
+                "symbol": "M",
+                "children": [{"x": 2, "y": 1}, {"x": 3, "y": 1}],
+            },
+            {"x": 2, "y": 1, "symbol": "M", "children": [{"x": 3, "y": 16}]},
+            {"x": 3, "y": 1, "symbol": "?", "children": [{"x": 3, "y": 16}]},
+        ]
+        base = map_state(choices=("x=0", "x=1", "x=2"), nodes=nodes)
+        state = GameState(
+            base.owner_hint,
+            base.scope_id,
+            base.screen,
+            facts={**base.facts, "gold": 0},
+        )
+        client = FakeLLM(
+            {
+                "choice_id": 0,
+                "path": ["L00C0", "L01C0", "BOSS"],
+                "reason": "avoid unfunded shops",
+            }
+        )
+
+        _, options = render_map(state)
+        create_map_agent(client).decide(request(state))
+
+        self.assertEqual(
+            [option["forced_shop_count"] for option in options],
+            [0, 2, 0],
+        )
+        prompt = client.requests[0].messages[-1].content
+        self.assertIn('"gold": 0', prompt)
+        self.assertIn('"forced_shop_count": 2', prompt)
 
     def test_coffee_dripper_does_not_hide_an_at_risk_elite_after_a_rest(self):
         class AtRisk:
@@ -871,6 +916,10 @@ class ConcreteMapAgentTests(unittest.TestCase):
         self.assertTrue(english_messages[0].content.isascii())
         self.assertFalse(chinese_messages[0].content.isascii())
         self.assertNotEqual(english_messages, chinese_messages)
+        self.assertIn(
+            "不得仅因路线经过它们就否定",
+            chinese_messages[1].content,
+        )
 
     def test_unsupported_prompt_language_is_rejected_during_wiring(self):
         with self.assertRaisesRegex(ValueError, "unsupported prompt language"):

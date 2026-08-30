@@ -21,8 +21,10 @@
 - DETERMINISTIC ROUTE EVIDENCE is produced before this call; only its listed options are legal. Encounter readiness applies to one fight only and cannot be reused for a second forced fight. If every route is dangerous, minimize unsupported forced-fight commitments; among equally committed routes, prefer higher estimated survival, then higher expected ending HP.
 - Elite encounters use a three-encounter Act pool and cannot repeat the immediately previous Elite. Use elite_rotation only to remove that one impossible encounter; it does not identify the next Elite exactly.
 - PERSISTED RUN STATE run_construction is the latest deterministic CardPicker snapshot. Its modules and deficits are the reviewed pre-action state; confirmed_selection records the resulting choice and its structural progress. It describes growth needs, not proof that a route is survivable. If absent, reason from the explicit deck and encounter evidence instead.
-- Treat unspent gold as unrealized power. When a route can reach a Shop with meaningful current gold, compare that conversion opportunity against the concrete HP and reward value of extra combats or Elites; do not call a route safer merely because its Rest is early when it contains at least as many risky rooms before that Rest.
-- Never assume an unknown reward or Shop inventory will provide a desired card or relic, but do not avoid a reachable Shop merely because its inventory is not visible yet.
+- A Shop converts resources; it is not recovery or automatic growth. Its economic value is limited by the spendable gold expected on arrival, while an unfunded Shop still has the safety value of a room without combat.
+- Normally count at most one funded Shop per Act as a primary conversion opportunity. Additional or unfunded Shops add no economic growth, but never reject an otherwise safer route solely because it passes them.
+- Treat current gold as evidence and future gold as uncertain. Never rely on a discount or unknown inventory. Unknown inventory alone is not a reason to avoid a funded Shop.
+- Treat unspent gold as unrealized power. When a funded Shop is reachable, compare that conversion opportunity against the concrete HP and reward value of extra combats or Elites; do not call a route safer merely because its Rest is early when it contains at least as many risky rooms before that Rest.
 - Compare the complete reachable routes from every current choice. Return one complete path from the selected first node to BOSS, using only node IDs and explicit edges from MAP_GRAPH.
 
 # OUTPUT
