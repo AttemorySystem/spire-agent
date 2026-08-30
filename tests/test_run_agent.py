@@ -167,6 +167,7 @@ class RuntimeEntryTests(unittest.TestCase):
         self.assertEqual(config.runtime_dir, ROOT / "runtime")
         self.assertEqual(config.log_dir, ROOT)
         self.assertEqual(config.mcts_threads, 12)
+        self.assertEqual(config.replay_action_delay_seconds, 0.5)
 
     def test_agent_config_validates_size_without_forcing_aspect_ratio(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -246,6 +247,14 @@ class RuntimeEntryTests(unittest.TestCase):
                 encoding="utf-8",
             )
             with self.assertRaisesRegex(AgentConfigError, "positive"):
+                load_runtime_config(path)
+
+            path.write_text(
+                "agents:\n  map: llm\n  build: winning_path\n  combat: mcts\n"
+                "replay:\n  action_delay_seconds: -1\n",
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(AgentConfigError, "non-negative"):
                 load_runtime_config(path)
 
     def test_build_agent_delegates_event_choice_to_llm(self):
@@ -356,6 +365,11 @@ class RuntimeEntryTests(unittest.TestCase):
         self.assertIsNone(generated.fullscreen)
         self.assertIsNone(generated.log_dir)
         self.assertIsNone(generated.runtime_dir)
+        self.assertIsNone(generated.replay_action_delay)
+        self.assertEqual(
+            parse_args(["--replay-action-delay", "0.25"]).replay_action_delay,
+            0.25,
+        )
         self.assertTrue(parse_args(["--fullscreen"]).fullscreen)
 
     def test_cli_opens_console_by_default(self):

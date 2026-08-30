@@ -282,6 +282,48 @@ class HudTests(unittest.TestCase):
             self.assertEqual(json.loads(replay_overlay.read_text()), expected)
             self.assertEqual(path.read_text().splitlines(), lines_before)
 
+    def test_hidden_live_hud_still_records_exact_replay_frames(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            directory = RunDirectory(root / "runs")
+            directory.bind("DISPLAY")
+            hidden_overlay = root / "hidden.json"
+            initial = entry(
+                0, state(0, owner=AgentKind.MAP, screen="MAP"), None
+            )
+            second = entry(
+                1,
+                state(1, owner=AgentKind.BUILD, screen="EVENT"),
+                "choose 0",
+                Decision("choose 0", "map.llm"),
+            )
+            recorder = HudObserver(
+                directory, FakeReplay(), hidden_overlay, display=False
+            )
+
+            recorder.on_entry(initial)
+            recorder.on_entry(second)
+
+            self.assertFalse(hidden_overlay.exists())
+            history = (directory.path / HISTORY_FILENAME).read_text().splitlines()
+            self.assertEqual(len(history), 2)
+
+            replay = FakeReplay(resume=True)
+            replay_overlay = root / "replay.json"
+            player = HudObserver(directory, replay, replay_overlay)
+            player.on_entry(initial)
+            replay.last_execution_replayed = True
+            player.on_entry(second)
+
+            self.assertEqual(
+                json.loads(replay_overlay.read_text()),
+                json.loads(history[-1])["frame"],
+            )
+            self.assertEqual(
+                (directory.path / HISTORY_FILENAME).read_text().splitlines(),
+                history,
+            )
+
     def test_overlay_failure_does_not_stop_history_recording(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

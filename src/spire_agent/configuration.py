@@ -34,6 +34,7 @@ class RuntimeConfig:
     llm_base_url: str
     llm_model: str
     communication_timeout: float
+    replay_action_delay_seconds: float
     mcts_simulations: int
     mcts_threads: int
     mcts_max_time_ms: int
@@ -52,6 +53,7 @@ _KEYS = {
     "paths": {"runtime_dir", "log_dir", "mcts_binary", "card_eval_binary"},
     "llm": {"base_url", "model"},
     "communication": {"timeout"},
+    "replay": {"action_delay_seconds"},
     "mcts": {
         "simulations",
         "threads",
@@ -110,6 +112,15 @@ def load_runtime_config(path: Path) -> RuntimeConfig:
         or timeout <= 0
     ):
         raise AgentConfigError("communication.timeout must be positive")
+    replay_delay = groups["replay"].get("action_delay_seconds", 0.5)
+    if (
+        isinstance(replay_delay, bool)
+        or not isinstance(replay_delay, (int, float))
+        or replay_delay < 0
+    ):
+        raise AgentConfigError(
+            "replay.action_delay_seconds must be non-negative"
+        )
     mcts = {
         name: _integer(groups["mcts"], name, default)
         for name, default in {
@@ -147,6 +158,7 @@ def load_runtime_config(path: Path) -> RuntimeConfig:
         llm_base_url=str(llm.get("base_url") or "").strip(),
         llm_model=str(llm.get("model") or "").strip(),
         communication_timeout=float(timeout),
+        replay_action_delay_seconds=float(replay_delay),
         **{f"mcts_{name}": value for name, value in mcts.items()},
     )
 

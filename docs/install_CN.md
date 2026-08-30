@@ -357,9 +357,9 @@ hud=off
 uv run spire-agent --no-tui --character IRONCLAD --ascension 20 --seed 0 --fullscreen
 ```
 
-在 `config.yaml` 中设置 `run.hud: true`，即可加载 `AgentVisualizer.jar`，
-并写入实时 run 和 replay 使用的 HUD 数据。窗口和全屏模式都支持 HUD。HUD 模式
-会加载：
+每个 run 都会记录 HUD 历史。在 `config.yaml` 中设置 `run.hud: true`，即可加载
+`AgentVisualizer.jar` 并在游戏内显示这些数据。窗口和全屏模式都支持 HUD。HUD
+模式会加载：
 
 ```text
 basemod, CommunicationMod, agentstatefixes, agentvisualizer
@@ -395,6 +395,11 @@ runtime/out/stderr.log
 ```bash
 uv run spire-agent --no-tui --replay runs/ABC123
 ```
+
+Replay 执行下一条历史动作前，会将当前已确认状态保持
+`replay.action_delay_seconds` 秒（默认 `0.5`）。将其设为 `0`，或使用
+`--replay-action-delay 0`，即可最快回放。这个延迟只影响显示，不参与稳定检查和
+replay 校验。
 
 Replay 会校验每个已记录的决策边界和地下城 RNG 状态。不要编辑
 `replay.jsonl`、弱化 mismatch 检查，或复用 run 目录。Replay mismatch 表示安装

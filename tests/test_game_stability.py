@@ -143,6 +143,70 @@ class GameStabilityToolTests(unittest.TestCase):
         self.assertIs(result, settled)
         self.assertEqual(driver.calls, ["wait 10", "wait 10"])
 
+    def test_codex_choice_does_not_wait_past_the_ready_boundary(self):
+        before = observation(
+            "NONE",
+            phase="COMBAT",
+            commands=("end", "potion", "wait", "state"),
+            combat={
+                "turn": 1,
+                "player": {"energy": 0},
+                "monsters": [
+                    {"name": "The Champ", "current_hp": 431, "move_id": 4}
+                ],
+            },
+        )
+        codex = observation(
+            "CARD_REWARD",
+            phase="COMBAT",
+            commands=("choose", "potion", "skip", "wait", "state"),
+            choices=("Stack", "Skim", "Scrape"),
+            combat=before["game_state"]["combat_state"],
+            action_phase="EXECUTING_ACTIONS",
+            current_action="CodexAction",
+            transition_pending=True,
+        )
+        driver = Driver()
+
+        result = self.settle(before, codex, "end", driver)
+
+        self.assertIs(result, codex)
+        self.assertEqual(driver.calls, [])
+
+    def test_codex_choice_waits_until_a_reward_command_is_available(self):
+        before = observation(
+            "NONE",
+            phase="COMBAT",
+            commands=("end", "potion", "wait", "state"),
+            combat={
+                "turn": 1,
+                "player": {"energy": 0},
+                "monsters": [
+                    {"name": "The Champ", "current_hp": 431, "move_id": 4}
+                ],
+            },
+        )
+        pending = observation(
+            "CARD_REWARD",
+            phase="COMBAT",
+            commands=("potion", "wait", "state"),
+            choices=("Stack", "Skim", "Scrape"),
+            combat=before["game_state"]["combat_state"],
+            action_phase="EXECUTING_ACTIONS",
+            current_action="CodexAction",
+            transition_pending=True,
+        )
+        ready = deepcopy(pending)
+        ready["available_commands"] = [
+            "choose", "potion", "skip", "wait", "state"
+        ]
+        driver = Driver(ready)
+
+        result = self.settle(before, pending, "end", driver)
+
+        self.assertIs(result, ready)
+        self.assertEqual(driver.calls, ["wait 10"])
+
     def test_waiting_phase_is_not_stable_while_combat_actions_are_pending(self):
         before = observation(
             "NONE",

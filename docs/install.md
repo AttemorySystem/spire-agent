@@ -364,9 +364,9 @@ same mode can also be enabled for one invocation with:
 uv run spire-agent --no-tui --character IRONCLAD --ascension 20 --seed 0 --fullscreen
 ```
 
-Set `run.hud: true` in `config.yaml` to load `AgentVisualizer.jar` and write the HUD
-data used by live runs and replay. It works in either windowed or fullscreen
-mode. HUD mode loads:
+HUD history is recorded for every run. Set `run.hud: true` in `config.yaml` to
+load `AgentVisualizer.jar` and display that data in game. It works in either
+windowed or fullscreen mode. HUD mode loads:
 
 ```text
 basemod, CommunicationMod, agentstatefixes, agentvisualizer
@@ -403,6 +403,11 @@ Resume a crashed new-format run explicitly:
 ```bash
 uv run spire-agent --no-tui --replay runs/ABC123
 ```
+
+Replay holds each confirmed historical state for the configured
+`replay.action_delay_seconds` (default `0.5`) before executing the next action.
+Set it to `0`, or use `--replay-action-delay 0`, for the fastest replay. This is
+a display-only delay and does not change settling or replay validation.
 
 Replay validates every recorded decision boundary and dungeon RNG state. Do
 not edit `replay.jsonl`, weaken a mismatch, or reuse a run directory. A replay

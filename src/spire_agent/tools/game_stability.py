@@ -597,6 +597,25 @@ def settle_game_state(
     barrier_frames = (
         policy.command_wait_frames if family in _GAMEPLAY_COMMANDS else 0
     )
+    game = _game(current)
+    # Generated combat rewards suspend the action queue until a choice is made.
+    # Waiting after CommunicationMod exposes that boundary can deadlock it.
+    if (
+        (baseline is None or _settle_signature(current) != baseline)
+        and str(game.get("room_phase") or "").upper() == "COMBAT"
+        and _screen(current) == "CARD_REWARD"
+        and bool(_choices(current))
+        and bool(_commands(current) & {"choose", "skip"})
+        and bool(str(game.get("current_action") or "").strip())
+        and _semantic_issue(
+            current,
+            selected_card=selected_card,
+            grid_expected_deck_size=grid_deck_size,
+            deck_growth_expected_size=deck_growth_size,
+        )
+        is None
+    ):
+        return current
     if not _terminal(current) and barrier_frames and "wait" in _commands(current):
         current = advance(
             lambda: wait_frames(barrier_frames),

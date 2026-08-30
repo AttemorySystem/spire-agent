@@ -3,6 +3,7 @@ from __future__ import annotations
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from spire_agent.context import GameContext
 from spire_agent.contracts import (
@@ -147,6 +148,36 @@ class ReplayTests(unittest.TestCase):
                 result.continuation.data["remaining"],
                 ("Bash",),
             )
+
+    def test_action_delay_applies_only_to_historical_replay_actions(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = RunDirectory(Path(temporary))
+            directory.bind("TEST")
+            live = ReplayRuntime(
+                OneStepSession(state("before"), state("after", terminal=True)),
+                OneDecision(),
+                ReplayJournal(directory),
+                lambda rng, key: None,
+                action_delay_seconds=1.0,
+            )
+            with patch("spire_agent.extensions.replay.time.sleep") as sleep:
+                self.run_once(live)
+            sleep.assert_not_called()
+
+            replay = ReplayJournal(RunDirectory.open(directory.path), resume=True)
+            runtime = ReplayRuntime(
+                OneStepSession(state("before"), state("after", terminal=True)),
+                OneDecision(fail=True),
+                replay,
+                lambda rng, key: None,
+                action_delay_seconds=1.0,
+            )
+            with patch("spire_agent.extensions.replay.time.sleep") as sleep:
+                result = self.run_once(runtime)
+
+            sleep.assert_called_once_with(1.0)
+            self.assertTrue(result.state.terminal)
+            self.assertTrue(replay.last_execution_replayed)
 
     def test_replay_stops_and_writes_failure_on_post_state_divergence(self):
         with tempfile.TemporaryDirectory() as temporary:

@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping
 import json
 from pathlib import Path
+import time
 from typing import Any
 
 from spire_agent.contracts import (
@@ -438,11 +439,16 @@ class ReplayRuntime:
         decisions: DecisionProvider,
         journal: ReplayJournal,
         restore_rng: Callable[[Mapping[str, tuple[int, int, int]], str], None],
+        *,
+        action_delay_seconds: float = 0.0,
     ) -> None:
+        if action_delay_seconds < 0:
+            raise ValueError("replay action delay must be non-negative")
         self.session = session
         self.decisions = decisions
         self.journal = journal
         self.restore_rng = restore_rng
+        self.action_delay_seconds = action_delay_seconds
         self.current_state: GameState | None = None
 
     def decide(self, context: ContextView) -> RoutedDecision:
@@ -468,6 +474,8 @@ class ReplayRuntime:
             self.journal.last_execution_replayed = False
             return result
         self.journal.prepare_execute(command)
+        if self.journal.active_replay and self.action_delay_seconds:
+            time.sleep(self.action_delay_seconds)
         restore = self.journal.active_rng()
         try:
             current_rng = (

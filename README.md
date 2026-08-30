@@ -112,7 +112,8 @@ uv run spire-agent
 
 Each run writes logs, LLM calls, MCTS records, card choices, and a replay
 journal under `runs/<canonical-seed>/`. `run_config.json` records the resolved
-non-secret settings. An existing run directory is never overwritten.
+non-secret settings. HUD history is recorded even when its in-game display is
+off. An existing run directory is never overwritten.
 
 Common console commands are:
 

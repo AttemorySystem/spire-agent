@@ -104,8 +104,8 @@ uv run spire-agent
 ```
 
 每个 run 的日志、LLM 调用、MCTS 记录、选牌记录和 replay journal 都会写入
-`runs/<canonical-seed>/`。`run_config.json` 保存解析后的非敏感配置。已有的 run
-目录不会被覆盖。
+`runs/<canonical-seed>/`。`run_config.json` 保存解析后的非敏感配置。即使不在
+游戏内显示 HUD，HUD 历史也会记录。已有的 run 目录不会被覆盖。
 
 常用控制台命令：
 

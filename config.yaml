@@ -16,7 +16,7 @@ run:
   # 1024x576, 1280x720, 1600x900, 1920x1080, ...
   window_size: 1600x900
 
-  # Load AgentVisualizer and write its replayable HUD data.
+  # Load AgentVisualizer and show the HUD. History is always recorded.
   hud: false
 
 # Runtime files and native executables. Relative paths start at this file.
@@ -35,6 +35,10 @@ llm:
 # Seconds to wait for each game-bridge response.
 communication:
   timeout: 5.0
+
+# Presentation delay before each historical replay action. Use 0 for fastest replay.
+replay:
+  action_delay_seconds: 0.5
 
 # Combat search budgets.
 mcts:

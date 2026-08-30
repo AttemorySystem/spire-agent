@@ -65,6 +65,8 @@ class HudObserver:
         directory: RunDirectory,
         replay: object,
         overlay_path: str | Path,
+        *,
+        display: bool = True,
     ) -> None:
         self.directory = directory
         self.replay = replay
@@ -74,14 +76,15 @@ class HudObserver:
         self.sequence = 0
         self.loaded = False
         self.recording = True
-        self.displaying = True
+        self.displaying = display
         self._frame: dict[str, Any] | None = None
         self._llm_activity: dict[str, str] | None = None
         self._stream_updated = 0.0
-        try:
-            self.overlay_path.unlink(missing_ok=True)
-        except OSError:
-            self.displaying = False
+        if self.displaying:
+            try:
+                self.overlay_path.unlink(missing_ok=True)
+            except OSError:
+                self.displaying = False
 
     def on_entry(self, entry: ContextEntry) -> None:
         if not entry.confirmed:
@@ -212,6 +215,8 @@ class HudObserver:
             self.displaying = False
 
     def _hide(self) -> None:
+        if not self.displaying:
+            return
         try:
             self.overlay_path.unlink(missing_ok=True)
         except OSError:

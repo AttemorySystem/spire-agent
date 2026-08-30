@@ -140,6 +140,13 @@ def run(
         if args.communication_timeout is not None
         else config.communication_timeout
     )
+    replay_action_delay = (
+        config.replay_action_delay_seconds
+        if args.replay_action_delay is None
+        else args.replay_action_delay
+    )
+    if replay_action_delay < 0:
+        raise AgentConfigError("replay action delay must be non-negative")
     fullscreen = config.fullscreen if args.fullscreen is None else args.fullscreen
     hud = config.hud if hud is None else hud
     lib_dir, mods_dir, out_dir = (
@@ -183,18 +190,17 @@ def run(
         ascension = replay.ascension
     if character not in {"IRONCLAD", "DEFECT"}:
         raise AgentConfigError(f"unsupported character {character!r}")
-    hud_observer = (
-        HudObserver(run_directory, replay, out_dir / "agent_overlay.json")
-        if hud
-        else None
+    hud_observer = HudObserver(
+        run_directory,
+        replay,
+        out_dir / "agent_overlay.json",
+        display=hud,
     )
     llm = create_run_llm_client(
         run_directory,
         base_url=config.llm_base_url,
         model=config.llm_model,
-        stream_event=(
-            hud_observer.on_llm_event if hud_observer is not None else None
-        ),
+        stream_event=hud_observer.on_llm_event,
     )
     map_tool = DefaultMapTool(
         llm,
@@ -265,6 +271,7 @@ def run(
                 or os.environ.get("MODEL_URL", ""),
                 llm_model=config.llm_model or os.environ.get("MODEL", ""),
                 communication_timeout=communication_timeout,
+                replay_action_delay_seconds=replay_action_delay,
             )
             write_json(
                 path / "run_config.json",
@@ -304,10 +311,10 @@ def run(
         live_decisions,
         replay,
         lambda rng, key: restore_game_rng(env._do_action, rng, key),
+        action_delay_seconds=replay_action_delay,
     )
     observers: list[RunObserver] = [RunHistoryRecorder(run_directory, replay)]
-    if hud_observer is not None:
-        observers.append(hud_observer)
+    observers.append(hud_observer)
     if show_transitions:
         observers.append(ConsoleObserver())
     observers.extend(extra_observers)
@@ -378,6 +385,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--replay",
         type=Path,
         help="resume an explicitly selected new-format run directory",
+    )
+    parser.add_argument(
+        "--replay-action-delay",
+        type=float,
+        help="seconds to show each settled historical state before replaying",
     )
     parser.add_argument(
         "--character", choices=("IRONCLAD", "DEFECT")
