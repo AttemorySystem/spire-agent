@@ -9,9 +9,9 @@
 - **Minimal framework.** A minimal agent framework makes logic and actions easy
   to customize, while independent, pluggable tools contain complex domain
   logic.
-- **Deterministic first.** The harness handles everything that can be implemented
-  deterministically, minimizing uncertainty from LLM inference. Only complex
-  judgments are delegated to an LLM.
+- **Deterministic first.** The harness guarantees deterministic interaction,
+  while independent tools implement decisions backed by stable evidence. Only
+  judgments that still require open-ended tradeoffs are delegated to an LLM.
 - **Improves with every run.** Every run is fully recorded and replayable,
   becoming fixed test evidence for later policy improvements.
 
@@ -24,6 +24,41 @@
     - Defect: reached the Act 4 stage multiple times
 
 ![Spire Agent playing Slay the Spire](docs/assets/demo.gif)
+
+## Why this is hard
+
+Slay the Spire is not a game that can be mastered simply by understanding its
+rules. An Ascension 20 Heart (A20H) run usually spans more than 50 floors and
+contains hundreds of interdependent decisions: the order of cards played this
+turn changes the HP that remains, remaining HP changes the route, the route
+changes opportunities to acquire cards and relics, and the true cost of an
+early card choice may not appear until the final boss. The same strategy can
+produce completely opposite results on different seeds.
+
+LLMs excel at open-ended judgment based on semantics and context, but A20H
+demands a long sequence of precise, continuous decisions that remain consistent
+across time scales. A seemingly minor hallucination, calculation error, or
+misuse of resources can ultimately end the run. More importantly, the final
+outcome alone rarely reveals which decision dozens of floors earlier needs to
+change. Appending the complete history to the prompt adds information, but
+cannot guarantee numerical precision, policy consistency, or that an
+improvement will preserve behavior that already works.
+
+| Difficulty | LLM Only | Spire Agent |
+|---|---|---|
+| Terminal rewards are sparse and the environment is stochastic, making failures hard to attribute and policies hard to compare fairly | Reviews easily become post-hoc narratives; one success or failure does not establish which policy is better | Under the same runtime configuration, Replay preserves semantic boundaries and RNG; historical trajectory evaluation produces fixed decision samples and combat checkpoints, then runs paired regressions over the same RNG worlds. |
+| Combat has an enormous combinatorial space and requires exact handling of card order, targets, energy, and random draws | A model can propose plausible tactics but easily makes mistakes in damage arithmetic, long action sequences, and extreme branches | Combat Tool sends the complete combat state to a fast simulator and MCTS; the LLM does not mentally simulate an entire battle step by step. |
+| A card's value depends on the existing deck, future encounters, and unfinished build structures | Decisions can collapse into static card rankings, superficial synergies, or inconsistent hallucinated reasoning | The Winning Path algorithm explicitly maintains build modules, immediate survival needs, and contextual expert evidence, passing only deterministic results or a constrained shortlist to Build Agent. |
+| Combat, deck building, routing, and potion resources operate on different time scales but affect one another | One generic context struggles to preserve both turn-level precision and run-level planning; locally reasonable actions can undermine long-term goals | The Harness composes Combat, Build, and Map Agents by decision ownership and passes combat simulations, route facts, and build state across layers as structured evidence. |
+| A run contains hundreds of commands and many nested selection screens; one protocol error can stop it | A model can select stale actions, use the wrong index, or lose the original task after a screen transition | The harness removes interaction correctness from model reasoning through stable-state adaptation, command validation, commit-after-confirmation, and scoped continuations. |
+
+The Spire Agent harness guarantees interaction correctness, while independent
+Tools use simulation, expert experience, and structured evidence to expand the
+range of deterministic decisions. EvolveAgent turns accumulated run logs into
+fixed datasets and repeatedly evaluates policies within a constrained parameter
+space; only changes that pass the benchmark without regressing existing
+capabilities are encoded as executable Tools. The LLM retains judgments where
+evidence remains insufficient and open-ended tradeoffs are still required.
 
 ## Architecture
 
@@ -204,9 +239,10 @@ non-fast-path Build scenes use the scene-specific prompts in
 [`zh.toml`](src/spire_agent/subagents/prompts/build/zh.toml); these files are not
 used by the pure `build: llm` implementation.
 
-### MCTS search quality
+### MCTS search time and quality
 
-The `mcts` section in [config.yaml](config.yaml) controls Combat search budget.
+MCTS search is currently the largest source of latency. The `mcts` section in
+[config.yaml](config.yaml) controls the Combat search budget.
 Increasing per-worker `simulations` and `max_time_ms` gives normal searches more
 room; `adaptive_simulations` and `adaptive_time_ms` do the same for difficult
 states.

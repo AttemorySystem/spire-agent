@@ -8,10 +8,13 @@ import unittest
 from unittest.mock import patch
 
 from spire_agent.adapters.gym_sts import GymStsObservationAdapter
+from spire_agent.contracts import AgentKind, DecisionRequest, DecisionScope
 from spire_agent.extensions.run_directory import RunDirectory
 from spire_agent.tools.mcts import (
     CombatMCTS,
+    DefaultCombatTool,
     MCTSError,
+    MCTSResult,
     encode_state,
 )
 
@@ -63,6 +66,33 @@ def hologram_state():
 
 
 class CombatMCTSToolTests(unittest.TestCase):
+    def test_potion_gate_does_not_research_card_selection(self):
+        class Gate:
+            def __init__(self):
+                self.calls = 0
+
+            def select(self, state, baseline, search):
+                self.calls += 1
+                return MCTSResult("choose 0", None, {})
+
+        gate = Gate()
+        search = type(
+            "Search",
+            (),
+            {"choose": lambda self, state: MCTSResult("confirm", None, {})},
+        )()
+        decision = DefaultCombatTool(search, gate).try_decide(
+            DecisionRequest(
+                state=gambling_state(),
+                scope=DecisionScope(AgentKind.COMBAT, "combat-1"),
+                continuation=None,
+                shared={},
+                previous=None,
+            )
+        )
+        self.assertEqual(decision.command, "confirm")
+        self.assertEqual(gate.calls, 0)
+
     def test_encoder_marks_a_live_hologram_selector_for_search(self):
         self.assertEqual(
             encode_state(hologram_state())["mcts_card_select"],

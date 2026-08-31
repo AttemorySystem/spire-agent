@@ -116,8 +116,11 @@ class DefaultCombatTool(CombatTool):
             if active_slots
             else choose(state)
         )
+        # Potion release is a combat-turn decision.  It must not be applied to
+        # card-selection roots (Gambling Chip, Recycle, etc.), otherwise the
+        # ability to spend a potion changes which cards MCTS keeps/discards.
         select = getattr(self._potion_gate, "select", None)
-        if callable(select):
+        if callable(select) and generated_task(state) is None:
             result = select(state, result, choose)
         follow_up = getattr(result, "follow_up", None)
         if follow_up is not None and not isinstance(follow_up, Mapping):

@@ -13,7 +13,18 @@
   from expert history, expose the relic model through character policy data for
   opt-agent tuning, and require historical plus combat regression before it
   receives runtime authority.
-- Rework MCTS robust-continuation dominance. It currently lets rare high-quality
-  continuations replace much more reliable root actions. Keep it out of this
-  fix; later either remove the override or restrict it to statistically tied
-  root actions, with the existing Burning Pact regression retained.
+- Remove hidden-RNG strategy fusion from MCTS. Independent determinized worlds
+  can currently choose incompatible future policies: a random optional action
+  such as White Noise is deferred in worlds with an unfavorable future result
+  and used later in favorable worlds, although the live agent cannot know that
+  result before playing it. This overvalues deferral and delayed White Noise for
+  24 turns in the DEFECTXX97 Champ fight. Implement a shared observable-state
+  policy across RNG worlds: decisions before a random result is revealed must
+  share action statistics, while distinct visible outcomes may branch after the
+  reveal. Do not use card-name rules, timing thresholds, or replay RNG state.
+  Also make `applyRobustContinuationDominance()` a true conservative override:
+  its challenger must be no worse at the comparable replanning boundary in
+  reachability, horizon, effective HP, potion count, and state value. Add a
+  synthetic hidden-RNG information-set test and DEFECTXX97 Champ fixtures, then
+  require the complete historical battle-case regression with no previously
+  winning case becoming a loss before merging.
