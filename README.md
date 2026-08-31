@@ -2,7 +2,7 @@
 
 [English](README.md) | [简体中文](README_CN.md)
 
-**Spire Agent — an autonomous Slay the Spire agent.**
+**Spire Agent: An Autonomous Agent for Slay the Spire**
 
 ## Highlights
 
@@ -12,7 +12,7 @@
 - **Deterministic first.** The harness guarantees deterministic interaction,
   while independent tools implement decisions backed by stable evidence. Only
   judgments that still require open-ended tradeoffs are delegated to an LLM.
-- **Improves with every run.** Every run is fully recorded and replayable,
+- **Continuous improvement.** Every run is fully recorded and replayable,
   becoming fixed test evidence for later policy improvements.
 
 ## Current status

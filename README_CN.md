@@ -2,7 +2,7 @@
 
 [English](README.md) | [简体中文](README_CN.md)
 
-**Spire Agent——一个可以自主游玩《杀戮尖塔》的智能体。**
+**Spire Agent: An Autonomous Agent for Slay the Spire**
 
 ## 核心特点
 
@@ -10,7 +10,7 @@
   由独立、可插拔的 Tool 实现。
 - **确定性优先** 尽量消除 LLM 推理的不确定性：harness 保障交互确定性，独立 Tool
   实现具有稳定证据的领域决策，只有仍需开放式权衡的判断才交给 LLM。
-- **从每局游戏中持续改进** 每个 run 都会被完整记录并可回放，成为后续策略
+- **持续改进** 每个 run 都会被完整记录并可回放，成为后续策略
   优化的固定测试证据。
 
 ## 当前状态
@@ -179,6 +179,11 @@ uv run spire-agent --no-tui
 在 [config.yaml](config.yaml) 的 `agents` 配置中选择具体实现。
 
 ## 说明
+
+### Bugs
+
+- MCTS 在完全没有胜率时的选择当前还有很多优化空间
+- MCTS 并不喜欢随机
 
 ### LLM 实现与 Prompt
 
