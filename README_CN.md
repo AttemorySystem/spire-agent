@@ -19,7 +19,7 @@
 - 平台：已在 Linux 和 macOS 上测试；Windows 尚未测试
 - 当前成绩：
     - 铁甲战士：多次完成进阶 20 心脏通关（[视频](https://www.bilibili.com/video/BV1ewuo66EP7/)）
-    - 故障机器人：多次进入第四幕
+    - 故障机器人：多次进入第四幕（[视频](https://www.bilibili.com/video/BV1Cztx6SEVx/)）
 
 ![Spire Agent 正在游玩杀戮尖塔](docs/assets/demo.gif)
 
@@ -80,12 +80,6 @@ EvolveAgent 负责把积累的 run 日志转换为固定数据集，在受约束
 和 `CombatAgent` 通过相同的请求/决策接口连接游戏，并分别把领域逻辑委托给
 外部 Tool。所有状态、决策、LLM 调用和 MCTS 搜索都会写入
 `runs/<seed>/`，同一个 run 可以通过 replay journal 精确复现。
-
-`EvolveAgent` 是离线优化循环。它把积累的 run 日志转换为固定评测数据集，
-并在固定参数空间内优化 Deck Building 算法。每次优化都有固定的验收标准：新策略和
-当前策略会在相同的历史选牌与 MCTS 战斗检查点上进行比较，包括新策略重建的卡组
-能否战胜原 run 已经通过的普通敌人、各幕 Boss，以及最终导致失败的敌人。只有取得
-可衡量提升且 benchmark 没有回归的修改，才会合入正式 CardPicker。
 
 ## 安装
 

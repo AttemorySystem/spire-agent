@@ -21,7 +21,7 @@
 - Platforms: Linux and macOS tested; Windows untested
 - Current results:
     - Ironclad: several Ascension 20 Heart wins ([video](https://www.bilibili.com/video/BV1ewuo66EP7/))
-    - Defect: reached the Act 4 stage multiple times
+    - Defect: reached the Act 4 stage multiple times ([video](https://www.bilibili.com/video/BV1Cztx6SEVx/))
 
 ![Spire Agent playing Slay the Spire](docs/assets/demo.gif)
 
@@ -93,15 +93,6 @@ and `CombatAgent` use the same request/decision interface to connect to the
 game, and each delegates domain work through an external tool interface. Every
 state, decision, LLM call, and MCTS search is written under `runs/<seed>/`; the
 same run can be reproduced from its replay journal.
-
-`EvolveAgent` is the offline improvement loop. It turns accumulated run logs
-into fixed evaluation datasets and optimizes the deck-building algorithm within
-a fixed parameter space. Every improvement has a fixed acceptance test: the new
-policy is compared with the current policy on the same historical choices and
-MCTS combat checkpoints, including whether its rebuilt deck can defeat the
-enemies and Act bosses reached by the original run—and the encounter that ended
-it. Only measurable gains without benchmark regressions are merged into the
-production card picker.
 
 ## Install
 
