@@ -23,6 +23,7 @@ class PotionGate:
     def __init__(self, run_directory: object) -> None:
         self._runs = run_directory
         self._scope = self._decided_level = ""
+        self._decided_end_hp: float | None = None
         self._decided_inventory: tuple[int, ...] = ()
         self._authorized: set[int] = set()
         self._released: set[int] = set()
@@ -60,7 +61,9 @@ class PotionGate:
                 {**dict(baseline.metrics), "potion_gate": "SMOKE_BOMB_ESCAPE"},
             )
         live_inventory = tuple(potion_slots(state))
-        if not available or level in {SAFE, UNKNOWN} or not self._may_decide(level, live_inventory):
+        if not available or level in {SAFE, UNKNOWN} or not self._may_decide(
+            level, live_inventory, before
+        ):
             self._record(state, before, (), (), "NO_RELEASE")
             return baseline
 
@@ -97,6 +100,7 @@ class PotionGate:
                     selected, reason = pair, "PAIR_REQUIRED_FOR_EMERGENCY"
 
         self._decided_level = level
+        self._decided_end_hp = _number(before.get("expected_end_hp"))
         self._decided_inventory = live_inventory
         if not selected:
             self._record(state, before, probes, (), reason)
@@ -131,15 +135,27 @@ class PotionGate:
                 rows.append({"slots": slots, "error": str(error)})
         return rows
 
-    def _may_decide(self, level: str, inventory: tuple[int, ...]) -> bool:
+    def _may_decide(
+        self,
+        level: str,
+        inventory: tuple[int, ...],
+        risk: Mapping[str, Any],
+    ) -> bool:
+        threshold = max(3.0, 0.05 * _number(risk.get("max_hp")))
         return not self._decided_level or (
             self._decided_level == DANGER and level == EMERGENCY
-        ) or inventory != self._decided_inventory
+        ) or inventory != self._decided_inventory or (
+            level in {DANGER, EMERGENCY}
+            and self._decided_end_hp is not None
+            and _number(risk.get("expected_end_hp"))
+                <= self._decided_end_hp - threshold
+        )
 
     def _enter(self, state: GameState) -> None:
         if state.scope_id == self._scope:
             return
         self._scope, self._decided_level = state.scope_id, ""
+        self._decided_end_hp = None
         self._decided_inventory = ()
         self._authorized.clear()
         self._released.clear()

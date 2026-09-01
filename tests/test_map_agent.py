@@ -198,6 +198,16 @@ class MapViewTests(unittest.TestCase):
 
 
 class ConcreteMapAgentTests(unittest.TestCase):
+    def test_burning_elite_requires_distinct_readiness_evidence(self):
+        option = {"forced_segment": ({"room": "E*"},)}
+
+        self.assertEqual(_needed_families(1, (option,)), ("BURNING_ELITE",))
+        self.assertTrue(_route_at_risk(
+            option,
+            1,
+            {"groups": {"ELITE": {"status": "SUPPORTED"}}},
+        ))
+
     def test_act_one_hallway_does_not_hide_a_later_forced_elite(self):
         options = ({"forced_segment": ({"room": "M"}, {"room": "E"})},)
         self.assertEqual(_needed_families(1, options), ("ELITE",))

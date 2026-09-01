@@ -107,9 +107,7 @@ class EncounterReadiness:
                 tuple(name for group in groups.values() for name in group),
                 bottles,
             )
-            fingerprint = sha256(
-                json.dumps(spec, sort_keys=True, separators=(",", ":")).encode()
-            ).hexdigest()
+            fingerprint = _fingerprint(spec, groups)
             if fingerprint in self._cache:
                 return {**self._cache[fingerprint], "cache_hit": True}
             if not self.binary.is_file():
@@ -198,7 +196,22 @@ def _groups(
         requested.add(
             "WEAK_HALLWAY" if weak_hallways_remaining else "STRONG_HALLWAY"
         )
-    return {name: targets for name, targets in groups.items() if name in requested}
+    selected = {name: targets for name, targets in groups.items() if name in requested}
+    if "BURNING_ELITE" in requested:
+        # The prospective evaluator currently models ordinary encounters only.
+        # An empty group is explicit unavailable evidence, never an ordinary
+        # elite result silently reused for the burning elite.
+        selected["BURNING_ELITE"] = {}
+    return selected
+
+
+def _fingerprint(
+    spec: Mapping[str, Any], groups: Mapping[str, Mapping[str, float]]
+) -> str:
+    payload = {"spec": spec, "groups": groups}
+    return sha256(
+        json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()
 
 
 def _spec(

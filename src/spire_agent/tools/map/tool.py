@@ -340,7 +340,11 @@ def _needed_families(
             if not isinstance(row, Mapping):
                 continue
             room = row.get("room")
-            family = "ELITE" if room in {"E", "E*"} else None
+            family = (
+                "BURNING_ELITE" if room == "E*"
+                else "ELITE" if room == "E"
+                else None
+            )
             if room == "M":
                 family = "HALLWAY" if act in {2, 3} else None
             if room in {"M", "E", "E*"}:
@@ -382,7 +386,11 @@ def _route_at_risk(
                 evidence = {}
             combat_evidence_used = False
             continue
-        family = "ELITE" if room in {"E", "E*"} else None
+        family = (
+            "BURNING_ELITE" if room == "E*"
+            else "ELITE" if room == "E"
+            else None
+        )
         if act in {2, 3} and room == "M":
             family = "WEAK_HALLWAY" if hallway < weak else "STRONG_HALLWAY"
             hallway += 1
@@ -419,7 +427,7 @@ def _danger_key(
             rested = option.get("rest_readiness")
             evidence = rested if isinstance(rested, Mapping) else {}
         if room in {"E", "E*"}:
-            family = "ELITE"
+            family = "BURNING_ELITE" if room == "E*" else "ELITE"
             break
         if room == "M":
             if act in {2, 3}:

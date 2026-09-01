@@ -37,6 +37,8 @@ def _resolve(
         )
     eligible = tuple(row for row in candidates if not row.get("rejected"))
     if not eligible:
+        if state.reward.get("must_pick"):
+            return _advice(candidates, "COMMITTED_REWARD_ALL_REJECTED")
         return _non_card(state, len(candidates), "ALL_HARD_REJECTED", ("ALL_REJECTED",))
 
     policy = load_policy(_character(state))
@@ -120,6 +122,8 @@ def _resolve(
         or _field(row, "expert").get("level") in {"POSITIVE", "DIRECT"}
     )
     if not positive:
+        if state.reward.get("must_pick"):
+            return _advice(eligible, "COMMITTED_REWARD")
         return _non_card(
             state,
             len(candidates),

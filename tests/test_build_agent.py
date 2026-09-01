@@ -15,7 +15,12 @@ from spire_agent.contracts import (
 )
 from spire_agent.subagents.build import create_build_agent as compose_build_agent
 from spire_agent.subagents.build_prompt import build_prompt
-from spire_agent.tools.build_flow import BuildError, build_choice_policy
+from spire_agent.tools.build_flow import (
+    BuildError,
+    _potion_slot,
+    build_choice_policy,
+    fast_decision,
+)
 from spire_agent.tools.winning_path.card_policy import review_shop
 from spire_agent.subagents.build_context import (
     RUN_CONSTRUCTION_KEY,
@@ -122,6 +127,43 @@ def prompt_payload(current: LLMRequest) -> dict:
 
 
 class BuildAgentTests(unittest.TestCase):
+    def test_fruit_juice_is_consumed_for_permanent_max_hp(self):
+        state = build_state(
+            "COMBAT_REWARD",
+            commands=("choose", "proceed", "potion"),
+            choices=("card",),
+            details={"rewards": ({"reward_type": "CARD"},)},
+            facts={
+                "potions": (
+                    {"name": "Fruit Juice", "slot": 0},
+                    {"name": "Potion Slot", "slot": 1},
+                )
+            },
+        )
+
+        decision = create_build_agent(FakeLLM([])).decide(request(state))
+
+        self.assertEqual(decision.command, "potion use 0")
+        self.assertEqual(decision.source, "build.potion")
+
+    def test_fruit_juice_requires_a_usable_non_boolean_slot(self):
+        unavailable = build_state(
+            "EVENT",
+            commands=("potion",),
+            facts={"potions": (
+                {"name": "Fruit Juice", "slot": 0, "can_use": False},
+                {"name": "Fire Potion", "slot": 1, "can_use": True},
+            )},
+        )
+        boolean_slot = build_state(
+            "EVENT",
+            commands=("potion",),
+            facts={"potions": ({"name": "Fruit Juice", "slot": True},)},
+        )
+
+        self.assertIsNone(fast_decision(request(unavailable)))
+        self.assertIsNone(_potion_slot(boolean_slot, "fruit juice"))
+
     def test_card_database_has_complete_cost_and_energy_facts(self):
         db = StsDB()
         zap = db.card("Zap")

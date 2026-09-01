@@ -6,7 +6,13 @@ import tempfile
 import unittest
 
 from spire_agent.contracts import AgentKind, GameState, ScreenState
-from spire_agent.tools.map.readiness import _group_summary, _groups, _history, _spec
+from spire_agent.tools.map.readiness import (
+    _fingerprint,
+    _group_summary,
+    _groups,
+    _history,
+    _spec,
+)
 
 
 class EncounterReadinessTests(unittest.TestCase):
@@ -134,9 +140,23 @@ class EncounterReadinessTests(unittest.TestCase):
             set(_groups(2, families=("HALLWAY",), weak_hallways_remaining=1)),
             {"WEAK_HALLWAY"},
         )
+
+    def test_burning_elite_never_reuses_ordinary_elite_evidence(self):
+        groups = _groups(1, families=("BURNING_ELITE",))
+
+        self.assertEqual(groups, {"BURNING_ELITE": {}})
         self.assertEqual(
             set(_groups(2, families=("HALLWAY",), weak_hallways_remaining=0)),
             {"STRONG_HALLWAY"},
+        )
+
+    def test_cache_fingerprint_includes_requested_encounter_groups(self):
+        spec = {"game_state": {"seed": 1}}
+        elites = {"ELITE": {"Gremlin Nob": 1.0}}
+
+        self.assertNotEqual(
+            _fingerprint(spec, elites),
+            _fingerprint(spec, {**elites, "BURNING_ELITE": {}}),
         )
 
     def test_spec_marks_the_bottle_and_removes_potions_from_survival_trials(self):

@@ -11,7 +11,7 @@ from spire_agent.tools.mcts import MCTSResult, PotionGate
 from spire_agent.tools.mcts.potion_gate import assess_risk, potion_slots
 
 
-def combat_state(*, heart=False, potion_count=5):
+def combat_state(*, heart=False, potion_count=5, current_hp=50):
     potions = [
         {
             "id": f"TestPotion{index}",
@@ -29,12 +29,12 @@ def combat_state(*, heart=False, potion_count=5):
             "act": 4 if heart else 1,
             "act_boss": "Corrupt Heart" if heart else "Slime Boss",
             "room_type": "MonsterRoomBoss" if heart else "MonsterRoomElite",
-            "current_hp": 50,
+            "current_hp": current_hp,
             "max_hp": 100,
             "potions": potions,
         },
         combat={
-            "player": {"current_hp": 50, "max_hp": 100},
+            "player": {"current_hp": current_hp, "max_hp": 100},
             "hand": ({"id": "Strike_R", "name": "Strike"},),
             "monsters": ({"id": "TestMonster", "current_hp": 100},),
         },
@@ -201,6 +201,49 @@ class PotionGateTests(unittest.TestCase):
             search.calls,
             [((0, 1, 2, 3, 4), None, "potion_final")],
         )
+
+    def test_emergency_is_rechecked_after_projected_hp_drops_materially(self):
+        state = combat_state(potion_count=1)
+        calls = []
+
+        def search(state, **kwargs):
+            calls.append((
+                tuple(kwargs.get("potion_slots") or ()),
+                kwargs.get("probe"),
+                kwargs.get("search_role"),
+            ))
+            return result(11, credible=False, search_id=f"search-{len(calls)}")
+        gate = PotionGate(object())
+
+        gate.select(state, result(10, credible=False), search)
+        gate.select(state, result(8, credible=False), search)
+        selected = gate.select(state, result(4, credible=False), search)
+
+        self.assertEqual(selected.metrics["search_id"], "search-3")
+        self.assertEqual(
+            calls,
+            [
+                ((0,), True, "potion_probe"),
+                ((0,), True, "potion_probe"),
+                ((0,), None, "potion_final"),
+            ],
+        )
+
+    def test_danger_is_rechecked_after_projected_hp_drops_materially(self):
+        state = combat_state(potion_count=1, current_hp=80)
+        calls = []
+
+        def search(state, **kwargs):
+            calls.append(tuple(kwargs.get("potion_slots") or ()))
+            return result(59, search_id=f"search-{len(calls)}")
+
+        gate = PotionGate(object())
+        gate.select(state, result(60), search)
+        gate.select(state, result(58), search)
+        selected = gate.select(state, result(54), search)
+
+        self.assertEqual(calls, [(0,), (0,), (0,)])
+        self.assertEqual(selected.metrics["search_id"], "search-3")
 
 
 if __name__ == "__main__":

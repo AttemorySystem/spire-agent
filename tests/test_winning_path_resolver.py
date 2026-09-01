@@ -16,6 +16,7 @@ def _state(
     *,
     deck: tuple[tuple[str, int], ...] = (),
     bowl: bool = False,
+    must_pick: bool = False,
 ) -> DecisionState:
     counts: dict[str, int] = {}
     upgrade_counts: dict[str, int] = {}
@@ -45,6 +46,7 @@ def _state(
                 {"id": name, "upgrades": 0} for name in offered
             ],
             "singing_bowl": bowl,
+            "must_pick": must_pick,
         },
     )
 
@@ -343,6 +345,20 @@ class WinningPathResolverTests(unittest.TestCase):
         self.assertEqual(plain_result["outcome"], "SKIP")
         self.assertEqual(bowl_result["outcome"], "SINGING_BOWL")
         self.assertEqual(bowl_result["proposed_action"]["choice_id"], 1)
+
+    def test_committed_reward_can_choose_the_least_bad_rejected_card(self):
+        catalog = _catalog([], card_policies=[
+            {"card": "Forbidden A", "policy": "FORBID", "reason": "fixture"},
+            {"card": "Forbidden B", "policy": "FORBID", "reason": "fixture"},
+        ])
+        state = _state(("Forbidden A", "Forbidden B"), must_pick=True)
+
+        result = resolve(state, catalog, analyze_candidate_evidence(state, catalog))
+
+        self.assertEqual(result["outcome"], "ADVICE_REQUIRED")
+        self.assertEqual(result["allowed_choice_ids"], [0, 1])
+        self.assertFalse(result["allow_skip"])
+        self.assertEqual(result["policy"], "COMMITTED_REWARD_ALL_REJECTED")
 
     def test_worthy_card_is_preferred_to_singing_bowl(self):
         catalog = _catalog(

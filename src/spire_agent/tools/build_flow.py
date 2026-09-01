@@ -121,6 +121,13 @@ def fast_decision(request: DecisionRequest) -> Decision | None:
     state = request.state
     if request.scope.owner is not AgentKind.BUILD:
         return None
+    fruit_juice = _potion_slot(state, "fruit juice")
+    if fruit_juice is not None and "potion" in state.screen.commands:
+        return Decision(
+            f"potion use {fruit_juice}",
+            "build.potion",
+            "consume Fruit Juice for its permanent max HP",
+        )
     key_rule = rest_policy(request)
     if key_rule is not None and key_rule.get("forced_choice_id") is not None:
         choice = int(key_rule["forced_choice_id"])
@@ -670,6 +677,27 @@ def _has_potion_slot(state: GameState) -> bool:
         if _normalize_name(name) in {"potion slot", "empty", "empty slot"}:
             return True
     return False
+
+
+def _potion_slot(state: GameState, target: str) -> int | None:
+    for index, value in enumerate(_sequence(state.facts.get("potions"))):
+        if isinstance(value, Mapping) and value.get("can_use") is False:
+            continue
+        name = (
+            value.get("name") or value.get("potion") or value.get("id")
+            if isinstance(value, Mapping)
+            else value
+        )
+        if _normalize_name(name) == target:
+            slot = value.get("slot", index) if isinstance(value, Mapping) else index
+            return (
+                slot
+                if isinstance(slot, int)
+                and not isinstance(slot, bool)
+                and 0 <= slot < 5
+                else None
+            )
+    return None
 
 
 def _jsonable(value: Any) -> Any:

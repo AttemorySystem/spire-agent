@@ -40,6 +40,7 @@ def card_state(
     floor=1,
     singing_bowl=False,
     detail_names=None,
+    room_type="MonsterRoom",
 ):
     return GameState(
         AgentKind.BUILD,
@@ -59,6 +60,7 @@ def card_state(
             "class": "IRONCLAD",
             "act": act,
             "floor": floor,
+            "room_type": room_type,
             "deck": tuple({"name": name} for name in deck),
             "relics": ({"name": "Burning Blood"},),
         },
@@ -91,6 +93,29 @@ class FakeLLM:
 
 
 class CardRewardPolicyTests(unittest.TestCase):
+    def test_neow_reward_without_reviewed_evidence_must_choose_a_card(self):
+        llm = FakeLLM({
+            "action": "choose",
+            "choice_id": 0,
+            "targets": [],
+            "reason": "Take the useful committed reward.",
+        })
+
+        decision = create_build_agent(llm).decide(request(card_state(
+            ("The Bomb", "Sadistic Nature", "Chrysalis"),
+            floor=0,
+            room_type="NeowRoom",
+        )))
+
+        self.assertEqual(decision.command, "choose 0")
+        self.assertEqual(
+            decision.payload["winning_path_review"]["policy"],
+            "COMMITTED_REWARD",
+        )
+        self.assertFalse(
+            decision.payload["winning_path_review"]["allow_skip"]
+        )
+
     def test_act_one_apotheosis_is_deterministic(self):
         llm = FakeLLM({})
         decision = create_build_agent(llm).decide(

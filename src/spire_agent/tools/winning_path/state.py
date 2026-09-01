@@ -125,6 +125,7 @@ def project_state(request: DecisionRequest) -> DecisionState:
             "offered": offered,
             "offered_cards": offered_cards,
             "singing_bowl": _singing_bowl_available(request),
+            "must_pick": _must_pick(request),
         },
         missing_facts=tuple(missing),
     )
@@ -190,7 +191,20 @@ def _reward_kind(request: DecisionRequest) -> str:
     raw = details.get("reward_type") or details.get("kind")
     if raw:
         return str(raw).strip().casefold().replace(" ", "_")
-    return "combat_card_reward"
+    room = str(request.state.facts.get("room_type") or "").casefold()
+    if "boss" in room:
+        return "boss_card_reward"
+    if "elite" in room:
+        return "elite_card_reward"
+    if "monster" in room:
+        return "combat_card_reward"
+    return "event_card_reward"
+
+
+def _must_pick(request: DecisionRequest) -> bool:
+    """A Neow card screen is the selected option's committed reward."""
+
+    return str(request.state.facts.get("room_type") or "").casefold() == "neowroom"
 
 
 def _first(value: Mapping[str, Any], *keys: str) -> object | None:
