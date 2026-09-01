@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from typing import Any
 
 from spire_agent.contracts import AgentKind, ContextEntry, GameState
 from spire_agent.tools.run_keys import (
@@ -83,8 +84,14 @@ class BuildConversationReducer:
         result[BUILD_CONVERSATION_KEY] = {
             "scope_id": scope_id,
             "messages": messages,
+            **(
+                {"snapshot": _plain(exchange["snapshot"])}
+                if isinstance(exchange.get("snapshot"), Mapping)
+                else {}
+            ),
         }
         return result
+
 
 def room_messages(
     shared: Mapping[str, object],
@@ -106,7 +113,67 @@ def room_messages(
         if role not in {"system", "user", "assistant"} or not isinstance(content, str):
             return ()
         messages.append({"role": role, "content": content})
+    if len(messages) < 3 or len(messages) % 2 == 0:
+        return ()
+    expected = ("system",) + ("user", "assistant") * ((len(messages) - 1) // 2)
+    if tuple(message["role"] for message in messages) != expected:
+        return ()
     return tuple(messages)
+
+
+def room_snapshot(
+    shared: Mapping[str, object], scope_id: str
+) -> Mapping[str, Any] | None:
+    conversation = shared.get(BUILD_CONVERSATION_KEY)
+    if (
+        not isinstance(conversation, Mapping)
+        or conversation.get("scope_id") != scope_id
+    ):
+        return None
+    snapshot = conversation.get("snapshot")
+    return _plain(snapshot) if isinstance(snapshot, Mapping) else None
+
+
+def context_delta(
+    previous: Mapping[str, Any], current: Mapping[str, Any]
+) -> dict[str, object]:
+    """Return changed values and removals using dotted object/list paths."""
+
+    changed: dict[str, object] = {}
+    removed: list[str] = []
+
+    def visit(path: tuple[str, ...], before: object, after: object) -> None:
+        if isinstance(before, Mapping) and isinstance(after, Mapping):
+            for key in sorted(set(before) | set(after)):
+                child = (*path, str(key))
+                if key not in after:
+                    removed.append(".".join(child))
+                elif key not in before:
+                    changed[".".join(child)] = _plain(after[key])
+                else:
+                    visit(child, before[key], after[key])
+        elif isinstance(before, list) and isinstance(after, list):
+            for index in range(max(len(before), len(after))):
+                child = (*path, str(index))
+                if index >= len(after):
+                    removed.append(".".join(child))
+                elif index >= len(before):
+                    changed[".".join(child)] = _plain(after[index])
+                else:
+                    visit(child, before[index], after[index])
+        elif _plain(before) != _plain(after):
+            changed[".".join(path)] = _plain(after)
+
+    visit((), _plain(previous), _plain(current))
+    return {"set": changed, "remove": removed}
+
+
+def _plain(value: object) -> Any:
+    if isinstance(value, Mapping):
+        return {str(key): _plain(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_plain(item) for item in value]
+    return value
 
 
 __all__ = [
@@ -114,5 +181,7 @@ __all__ = [
     "BUILD_EXCHANGE_KEY",
     "RUN_CONSTRUCTION_KEY",
     "BuildConversationReducer",
+    "context_delta",
     "room_messages",
+    "room_snapshot",
 ]

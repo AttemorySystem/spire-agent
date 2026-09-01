@@ -28,7 +28,12 @@ from spire_agent.tools.map import DefaultMapTool
 from spire_agent.tools.mcts import DefaultCombatTool
 from spire_agent.tools.mcts import MCTSResult
 from spire_agent.subagents import PromptLanguage
+from spire_agent.subagents.build_context import (
+    BUILD_CONVERSATION_KEY,
+    BuildConversationReducer,
+)
 from spire_agent.subagents.llm import LLMResponse
+from spire_agent.tools.llm_agents import create_llm_build_agent
 
 
 class FakeLLM:
@@ -60,6 +65,8 @@ def request(
     kind: AgentKind,
     screen: ScreenState,
     continuation: Continuation | None = None,
+    shared=None,
+    facts=None,
 ) -> DecisionRequest:
     state = GameState(
         owner_hint=kind,
@@ -71,6 +78,7 @@ def request(
             "deck": [{"name": "Strike"}],
             "relics": [{"name": "Burning Blood"}],
             "potions": [{"name": "Fire Potion"}],
+            **(facts or {}),
         },
         combat={
             "hand": [{"name": "Strike", "is_playable": True}],
@@ -83,7 +91,7 @@ def request(
         state=state,
         scope=DecisionScope(kind, state.scope_id),
         continuation=continuation,
-        shared={},
+        shared=shared or {},
         previous=ContextEntry(0, None, state, True),
     )
 
@@ -346,6 +354,80 @@ class RuntimeEntryTests(unittest.TestCase):
                 for request in llm.requests
             )
         )
+
+    def test_llm_build_agent_appends_only_state_changes_within_a_room(self):
+        llm = FakeLLM()
+        agent = create_llm_build_agent(llm)
+        screen = ScreenState(
+            type="EVENT",
+            commands=("choose",),
+            choices=("first", "second"),
+        )
+        first_request = request(AgentKind.BUILD, screen)
+        first = agent.decide(first_request)
+        shared = BuildConversationReducer().reduce(
+            {},
+            ContextEntry(
+                1,
+                first.command,
+                first_request.state,
+                True,
+                scope=first_request.scope,
+                decision=first,
+            ),
+        )
+        second_request = request(AgentKind.BUILD, screen, shared=shared)
+
+        agent.decide(second_request)
+
+        messages = llm.requests[1].messages
+        self.assertEqual(
+            [message.role for message in messages],
+            ["system", "user", "assistant", "user"],
+        )
+        update = json.loads(messages[-1].content)
+        self.assertEqual(set(update), {"instruction", "state_update"})
+        self.assertNotIn("facts", update)
+        self.assertEqual(update["state_update"], {"set": {}, "remove": []})
+
+    def test_llm_build_snapshot_without_messages_sends_full_state(self):
+        llm = FakeLLM()
+        agent = create_llm_build_agent(llm)
+        shared = {
+            BUILD_CONVERSATION_KEY: {
+                "scope_id": "runtime-build",
+                "messages": (),
+                "snapshot": {"owner": "build"},
+            }
+        }
+
+        agent.decide(
+            request(
+                AgentKind.BUILD,
+                ScreenState(type="EVENT", commands=("choose",), choices=("x",)),
+                shared=shared,
+            )
+        )
+
+        payload = json.loads(llm.requests[0].messages[-1].content)
+        self.assertEqual(payload["owner"], "build")
+        self.assertNotIn("state_update", payload)
+
+    def test_llm_entity_facts_have_stable_name_order(self):
+        llm = FakeLLM()
+        agent = create_llm_build_agent(llm)
+
+        agent.decide(
+            request(
+                AgentKind.BUILD,
+                ScreenState(type="EVENT", commands=("choose",), choices=("x",)),
+                facts={"deck": [{"name": "Strike"}, {"name": "Defend"}]},
+            )
+        )
+
+        payload = json.loads(llm.requests[0].messages[-1].content)
+        names = [row["name"] for row in payload["entity_facts"]["cards"]]
+        self.assertEqual(names, ["Defend", "Strike"])
 
     def test_cli_keeps_seed_as_text_and_reads_yaml_config(self):
         generated = parse_args(["--seed", "0"])

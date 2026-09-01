@@ -18,9 +18,7 @@ from spire_agent.contracts import (
 from spire_agent.tools.boss_relics import boss_relic_policy
 from spire_agent.tools.events import event_choice_policy, event_rule, forced_event_choice
 from spire_agent.tools.run_keys import key_view, rest_policy, reward_key
-from spire_agent.subagents.build_context import (
-    BUILD_EXCHANGE_KEY,
-)
+from spire_agent.subagents.build_context import BUILD_EXCHANGE_KEY
 from spire_agent.subagents.llm import LLMRequest
 
 
@@ -238,6 +236,7 @@ def llm_decision(
     response: object,
     prompt: LLMRequest,
     *,
+    snapshot: Mapping[str, Any],
     legal_choice_ids: Sequence[int] | None = None,
 ) -> Decision:
     """Validate model output and translate it to one concrete command."""
@@ -312,6 +311,15 @@ def llm_decision(
         separators=(",", ":"),
     )
     acquired = _selected_key(state, action, choice_id)
+    user = next(
+        message.content
+        for message in reversed(prompt.messages)
+        if message.role == "user"
+        and (
+            "# CURRENT STATE\n" in message.content
+            or "# CONFIRMED STATE UPDATE\n" in message.content
+        )
+    )
     return Decision(
         command,
         "build.llm",
@@ -325,8 +333,9 @@ def llm_decision(
             BUILD_EXCHANGE_KEY: {
                 "scope_id": request.scope.id,
                 "system": prompt.messages[0].content,
-                "user": prompt.messages[-1].content,
+                "user": user,
                 "assistant": assistant,
+                "snapshot": _jsonable(snapshot),
             },
         },
         metrics=metrics,

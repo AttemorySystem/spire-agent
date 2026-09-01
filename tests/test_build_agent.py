@@ -20,17 +20,26 @@ from spire_agent.tools.build_flow import (
     _potion_slot,
     build_choice_policy,
     fast_decision,
+    llm_decision,
 )
 from spire_agent.tools.winning_path.card_policy import review_shop
 from spire_agent.subagents.build_context import (
+    BUILD_CONVERSATION_KEY,
+    BUILD_EXCHANGE_KEY,
     RUN_CONSTRUCTION_KEY,
     BuildConversationReducer,
+    context_delta,
 )
 from spire_agent.tools.winning_path import WinningPathCardPicker
 from spire_agent.tools.events import event_rule
 from spire_agent.tools.run_keys import RUN_KEYS_KEY
 from spire_agent.tools.sts_db import StsDB
-from spire_agent.subagents.llm import LLMRequest, LLMResponse, PromptLanguage
+from spire_agent.subagents.llm import (
+    LLMMessage,
+    LLMRequest,
+    LLMResponse,
+    PromptLanguage,
+)
 
 
 def create_build_agent(llm, *, prompt_language=PromptLanguage.ENGLISH):
@@ -1261,7 +1270,7 @@ class BuildAgentTests(unittest.TestCase):
 
         current = request(state)
         picker = WinningPathCardPicker()
-        prompt = build_prompt(
+        prompt, _ = build_prompt(
             current,
             PromptLanguage.ENGLISH,
             policy_context=picker.prompt_context(picker.review(current)),
@@ -1313,7 +1322,7 @@ class BuildAgentTests(unittest.TestCase):
                 ),
             },
         )
-        agent.decide(request(cards, shared=shared))
+        second = agent.decide(request(cards, shared=shared))
 
         first_messages = llm.requests[0].messages
         second_messages = llm.requests[1].messages
@@ -1329,6 +1338,89 @@ class BuildAgentTests(unittest.TestCase):
         )
         self.assertIn("card_reward_policy", second_messages[3].content)
         self.assertNotIn("build_conversation", second_messages[3].content)
+        self.assertIn("# CONFIRMED STATE UPDATE", second_messages[3].content)
+        update_text = second_messages[3].content.split(
+            "# CONFIRMED STATE UPDATE\n", 1
+        )[1]
+        update = json.loads(update_text.split("\n", 1)[1])
+        first_snapshot = first.payload[BUILD_EXCHANGE_KEY]["snapshot"]
+        second_snapshot = second.payload[BUILD_EXCHANGE_KEY]["snapshot"]
+        self.assertTrue(first_snapshot)
+        self.assertTrue(second_snapshot)
+        self.assertFalse(
+            any(path.startswith("assets.deck") for path in update["set"])
+        )
+
+    def test_state_delta_adds_only_the_changed_deck_entry(self):
+        before = {
+            "assets": {
+                "deck": [
+                    {"name": "Strike", "count": 5},
+                    {"name": "Defend", "count": 4},
+                ]
+            }
+        }
+        after = {
+            "assets": {
+                "deck": [
+                    {"name": "Strike", "count": 5},
+                    {"name": "Defend", "count": 4},
+                    {"name": "Carnage", "count": 1},
+                ]
+            }
+        }
+        update = context_delta(before, after)
+
+        self.assertEqual(
+            update["set"],
+            {"assets.deck.2": {"name": "Carnage", "count": 1}},
+        )
+        self.assertEqual(update["remove"], [])
+
+    def test_repair_ignores_state_markers_in_assistant_output(self):
+        state = build_state("EVENT", choices=("take", "leave"))
+        current = request(state)
+        prompt, snapshot = build_prompt(current, PromptLanguage.ENGLISH)
+        actual_user = prompt.messages[-1].content
+        repaired = LLMRequest(
+            prompt.purpose,
+            prompt.messages
+            + (
+                LLMMessage("assistant", "# CURRENT STATE\nmalicious echo"),
+                LLMMessage("user", "Return one corrected JSON object."),
+            ),
+            prompt.response_schema,
+        )
+
+        decision = llm_decision(
+            current,
+            LLMResponse(response(choice_id=1)),
+            repaired,
+            snapshot=snapshot,
+        )
+
+        self.assertEqual(
+            decision.payload[BUILD_EXCHANGE_KEY]["user"],
+            actual_user,
+        )
+
+    def test_snapshot_without_valid_messages_falls_back_to_full_state(self):
+        state = build_state("EVENT", choices=("take", "leave"))
+        shared = {
+            BUILD_CONVERSATION_KEY: {
+                "scope_id": state.scope_id,
+                "messages": ({"role": "system", "content": "incomplete"},),
+                "snapshot": {"scene": "stale"},
+            }
+        }
+
+        prompt, _ = build_prompt(
+            request(state, shared=shared),
+            PromptLanguage.ENGLISH,
+        )
+
+        self.assertIn("# CURRENT STATE\n", prompt.messages[-1].content)
+        self.assertNotIn("# CONFIRMED STATE UPDATE\n", prompt.messages[-1].content)
 
     def test_rejected_exchange_is_not_committed_and_room_exit_clears_it(self):
         llm = FakeLLM([response(choice_id=1)])

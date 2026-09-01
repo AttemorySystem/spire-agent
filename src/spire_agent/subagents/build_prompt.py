@@ -11,7 +11,12 @@ import tomllib
 from typing import Any
 
 from spire_agent.contracts import DecisionRequest, GameState
-from spire_agent.subagents.build_context import BUILD_CONVERSATION_KEY, room_messages
+from spire_agent.subagents.build_context import (
+    BUILD_CONVERSATION_KEY,
+    context_delta,
+    room_messages,
+    room_snapshot,
+)
 from spire_agent.tools.build_flow import BUILD_ACTION_SCHEMA, BuildError, reward_type
 from spire_agent.tools.events import event_rule
 from spire_agent.subagents.llm import LLMMessage, LLMRequest, PromptLanguage
@@ -52,7 +57,7 @@ def build_prompt(
     *,
     policy_context: Mapping[str, Any] | None = None,
     choice_policy: Mapping[str, Any] | None = None,
-) -> LLMRequest:
+) -> tuple[LLMRequest, Mapping[str, Any]]:
     parsed = PromptLanguage.parse(language)
     scene = _scene(request.state)
     prompts = _prompt_file(parsed)
@@ -107,14 +112,31 @@ def build_prompt(
         LLMMessage(item["role"], item["content"])
         for item in prior
     ) or (LLMMessage("system", _prompt_value(prompts, "common")),)
+    previous = room_snapshot(request.shared, request.scope.id) if prior else None
+    if previous is None:
+        state_heading, state_payload = "# CURRENT STATE", context
+    else:
+        state_heading = "# CONFIRMED STATE UPDATE"
+        state_payload = context_delta(previous, context)
     user = (
         f"# CURRENT TASK\n{_prompt_value(prompts, scene)}\n\n"
-        f"# CURRENT STATE\n{json.dumps(context, ensure_ascii=False, indent=2, sort_keys=True)}"
+        f"{state_heading}\n"
+        + (
+            "The preceding action was confirmed. Apply this update to the "
+            "last state; omitted fields are unchanged. Numeric path segments "
+            "are list indexes.\n"
+            if previous is not None
+            else ""
+        )
+        + json.dumps(state_payload, ensure_ascii=False, indent=2, sort_keys=True)
     )
-    return LLMRequest(
-        f"build.{scene}",
-        messages + (LLMMessage("user", user),),
-        BUILD_ACTION_SCHEMA,
+    return (
+        LLMRequest(
+            f"build.{scene}",
+            messages + (LLMMessage("user", user),),
+            BUILD_ACTION_SCHEMA,
+        ),
+        context,
     )
 
 

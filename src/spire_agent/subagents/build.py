@@ -93,7 +93,7 @@ class BuildStage:
             return self._card_reward(request, complete)
         if request.state.screen.type == "SHOP_SCREEN":
             policy = self._card_picker.review_shop(request)
-            prompt = build_prompt(
+            prompt, snapshot = build_prompt(
                 request,
                 self._language,
                 policy_context=self._card_picker.shop_prompt_context(policy),
@@ -104,7 +104,7 @@ class BuildStage:
                 raise BuildError("LLM response data must be an object")
             try:
                 return self._shop_decision(
-                    request, response, prompt, policy, raw_data
+                    request, response, prompt, snapshot, policy, raw_data
                 )
             except BuildError as error:
                 repair = _repair_request(prompt, response, error)
@@ -113,7 +113,7 @@ class BuildStage:
                 if not isinstance(raw_data, Mapping):
                     raise BuildError("LLM response data must be an object")
                 return self._shop_decision(
-                    request, corrected, repair, policy, raw_data
+                    request, corrected, repair, snapshot, policy, raw_data
                 )
         key_rule = self._choice_policy(request)
         legal_ids = (
@@ -121,7 +121,7 @@ class BuildStage:
             if isinstance(key_rule, Mapping)
             else None
         )
-        prompt = build_prompt(
+        prompt, snapshot = build_prompt(
             request,
             self._language,
             choice_policy=key_rule,
@@ -129,12 +129,20 @@ class BuildStage:
         response = complete(prompt)
         try:
             return llm_decision(
-                request, response, prompt, legal_choice_ids=legal_ids
+                request,
+                response,
+                prompt,
+                snapshot=snapshot,
+                legal_choice_ids=legal_ids,
             )
         except BuildError as error:
             repair = _repair_request(prompt, response, error)
             return llm_decision(
-                request, complete(repair), repair, legal_choice_ids=legal_ids
+                request,
+                complete(repair),
+                repair,
+                snapshot=snapshot,
+                legal_choice_ids=legal_ids,
             )
 
     def _shop_decision(
@@ -142,6 +150,7 @@ class BuildStage:
         request: DecisionRequest,
         response: object,
         prompt: LLMRequest,
+        snapshot: Mapping[str, Any],
         policy: Mapping[str, Any],
         raw_data: Mapping[str, Any],
     ) -> Decision:
@@ -158,7 +167,7 @@ class BuildStage:
             model=str(getattr(response, "model", "")),
             usage=getattr(response, "usage", {}),
         )
-        proposed = llm_decision(request, effective, prompt)
+        proposed = llm_decision(request, effective, prompt, snapshot=snapshot)
         picker_payload = self._card_picker.shop_decision_payload(policy, approval)
         return Decision(
             proposed.command,
@@ -194,7 +203,7 @@ class BuildStage:
                 payload=self._card_picker.decision_payload(result, command=direct),
             )
 
-        prompt = build_prompt(
+        prompt, snapshot = build_prompt(
             request,
             self._language,
             policy_context=self._card_picker.prompt_context(result),
@@ -220,6 +229,7 @@ class BuildStage:
             request,
             effective,
             prompt,
+            snapshot=snapshot,
             legal_choice_ids=result.get("allowed_choice_ids") or (),
         )
         return Decision(

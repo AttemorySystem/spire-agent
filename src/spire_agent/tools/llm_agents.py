@@ -14,7 +14,12 @@ from spire_agent.contracts import (
     GameState,
 )
 from spire_agent.subagents import BuildAgent, CombatAgent
-from spire_agent.subagents.build_context import BUILD_EXCHANGE_KEY, room_messages
+from spire_agent.subagents.build_context import (
+    BUILD_EXCHANGE_KEY,
+    context_delta,
+    room_messages,
+    room_snapshot,
+)
 from spire_agent.subagents.combat import CombatTool, create_combat_agent
 from spire_agent.subagents.llm import LLMMessage, LLMRequest, PromptLanguage
 from spire_agent.tools.sts_db import StsDB
@@ -93,7 +98,7 @@ def _decide(
     complete = getattr(llm, "complete", None)
     if not callable(complete):
         raise TypeError("LLM agent has no complete() method")
-    prompt = _prompt(request, owner, language)
+    prompt, snapshot = _prompt(request, owner, language)
     response = complete(prompt)
     data = getattr(response, "data", None)
     if not isinstance(data, Mapping):
@@ -113,7 +118,9 @@ def _decide(
                     "scope_id": request.scope.id,
                     "system": prompt.messages[0].content,
                     "user": prompt.messages[-1].content,
-                    "assistant": str(getattr(response, "raw_text", "")),
+                    "assistant": str(getattr(response, "raw_text", ""))
+                    or json.dumps(data, ensure_ascii=False, separators=(",", ":")),
+                    "snapshot": snapshot,
                 }
             }
             if owner is AgentKind.BUILD
@@ -130,7 +137,7 @@ def _prompt(
     request: DecisionRequest,
     owner: AgentKind,
     language: PromptLanguage,
-) -> LLMRequest:
+) -> tuple[LLMRequest, Mapping[str, Any]]:
     state = request.state
     system = (
         f"You are the LLM {owner.value.upper()} agent for "
@@ -180,16 +187,34 @@ def _prompt(
     entity_facts = _entity_facts(state)
     if entity_facts:
         payload["entity_facts"] = entity_facts
-    messages = room_messages(request.shared, request.scope.id)
-    return LLMRequest(
-        f"{owner.value}.llm",
-        (*messages, LLMMessage("user", json.dumps(payload, ensure_ascii=False)))
-        if messages
-        else (
-            LLMMessage("system", system),
-            LLMMessage("user", json.dumps(payload, ensure_ascii=False)),
+    messages = tuple(
+        LLMMessage(item["role"], item["content"])
+        for item in room_messages(request.shared, request.scope.id)
+    )
+    previous = room_snapshot(request.shared, request.scope.id) if messages else None
+    current = (
+        payload
+        if previous is None
+        else {
+            "instruction": (
+                "Apply this update to the preceding confirmed state; omitted "
+                "fields are unchanged and numeric path segments are list indexes."
+            ),
+            "state_update": context_delta(previous, payload),
+        }
+    )
+    return (
+        LLMRequest(
+            f"{owner.value}.llm",
+            (*messages, LLMMessage("user", json.dumps(current, ensure_ascii=False)))
+            if messages
+            else (
+                LLMMessage("system", system),
+                LLMMessage("user", json.dumps(current, ensure_ascii=False)),
+            ),
+            _SCHEMA,
         ),
-        _SCHEMA,
+        payload,
     )
 
 
@@ -217,7 +242,7 @@ def _entity_facts(state: GameState) -> Mapping[str, Any]:
     ):
         facts = {
             str(fact["name"]): fact
-            for value in values
+            for value in sorted(values, key=str.casefold)
             if (fact := query(value)) is not None
         }
         if facts:
