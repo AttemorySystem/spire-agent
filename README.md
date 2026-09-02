@@ -20,7 +20,7 @@
 - Characters: Ironclad and Defect
 - Platforms: Linux and macOS tested; Windows untested
 - Current results:
-    - Ironclad: several Ascension 20 Heart wins ([video](https://www.bilibili.com/video/BV1ewuo66EP7/))
+    - Ironclad: several Ascension 20 Heart wins ([video](https://www.bilibili.com/video/BV1ewuo66EP7/)).
       In a recent 12-run sample, the average final floor was 38.6; six runs reached Act 3, including two that reached Act 4.
     - Defect: reached the Act 4 stage multiple times ([video](https://www.bilibili.com/video/BV1Cztx6SEVx/))
 
