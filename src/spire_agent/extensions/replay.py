@@ -23,6 +23,7 @@ from spire_agent.contracts import (
 )
 from spire_agent.extensions.log_io import append_jsonl, jsonable, write_json, write_jsonl
 from spire_agent.extensions.run_directory import RunDirectory
+from spire_agent.extensions.run_history import state_snapshot
 from spire_agent.ports import DecisionProvider, GameSession, RunObserver
 from spire_agent.tools.game_stability import stable_boundary_key
 
@@ -301,6 +302,7 @@ class ReplayJournal:
                 actual=actual,
                 expected_boundary=action.get("boundary") or {},
                 actual_boundary=_boundary(context.state),
+                actual_state=state_snapshot(context.state),
             )
         self.active = action
         self.active_record = None
@@ -348,6 +350,7 @@ class ReplayJournal:
                     action_index=index,
                     expected=dict(expected),
                     actual=value,
+                    actual_state=state_snapshot(result.state),
                     expected_next_rng=next_rng,
                     actual_rng=result.state.facts.get("replay_rng_state"),
                 )

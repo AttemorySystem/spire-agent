@@ -354,6 +354,12 @@ def _grid_expected_deck_size(
         return None
     screen_state = _mapping(_game(before).get("screen_state"))
     family = _command_family(command)
+    if (
+        family == "confirm"
+        and screen_state.get("confirm_up")
+        and screen_state.get("for_transform")
+    ):
+        return _deck_size(before)
     relic_names = {
         str(relic.get("name") or "").casefold()
         for relic in _sequence(_game(after).get("relics"))

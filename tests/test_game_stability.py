@@ -380,6 +380,31 @@ class GameStabilityToolTests(unittest.TestCase):
         self.assertIs(result, committed)
         self.assertEqual(driver.calls, ["wait 10", "wait 10"])
 
+    def test_two_step_transform_confirmation_waits_for_replacement(self):
+        deck = [{"name": f"Card {index}"} for index in range(11)]
+        before = observation(
+            "GRID",
+            commands=("confirm", "cancel", "wait", "state"),
+            deck=deck,
+            screen_state={
+                "num_cards": 1,
+                "for_transform": True,
+                "confirm_up": True,
+            },
+        )
+        pending = observation("EVENT", choices=("leave",), deck=deck[:10])
+        committed = observation(
+            "EVENT",
+            choices=("leave",),
+            deck=[*deck[:10], {"name": "Sever Soul"}],
+        )
+        driver = Driver(pending, committed)
+
+        result = self.settle(before, pending, "confirm", driver)
+
+        self.assertIs(result, committed)
+        self.assertEqual(driver.calls, ["wait 10", "wait 10"])
+
     def test_neow_transform_ignores_incorrect_grid_flag(self):
         deck = [{"name": f"Card {index}"} for index in range(11)]
         before = observation(
