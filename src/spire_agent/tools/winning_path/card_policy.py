@@ -6,7 +6,6 @@ from collections.abc import Callable, Mapping, Sequence
 from typing import Any
 
 from spire_agent.contracts import DecisionRequest, GameState, ScreenState
-from spire_agent.subagents.build_context import room_messages
 
 
 CARD_REWARD_RESULT_KEY = "card_reward_policy_result"
@@ -27,14 +26,12 @@ def review_shop(
     """Apply the card-reward policy to shop card choices."""
 
     offered = _shop_cards(request)
-    commitment = _purge_commitment(request)
     if not offered:
         return {
             "owner": "CardRewardPolicy",
             "card_choices": [],
             "allowed_card_choice_ids": [],
             "policy_result": None,
-            **commitment,
         }
     state = request.state
     shop = {
@@ -79,7 +76,6 @@ def review_shop(
         ],
         "policy_result": result,
         **shop,
-        **commitment,
     }
 
 
@@ -102,13 +98,7 @@ def shop_prompt_context(result: Mapping[str, Any]) -> dict[str, Any]:
         ],
         "instruction": (
             "Never buy a card with purchase_allowed=false. This restriction "
-            "does not apply to removal, relics, potions, or leaving the shop. "
-            + (
-                f"The confirmed room plan requires choice {result['required_choice_id']} "
-                f"next, removing {result['purge_target']}."
-                if result.get("required_choice_id") is not None
-                else ""
-            )
+            "does not apply to removal, relics, potions, or leaving the shop."
         ),
     }
 
@@ -119,19 +109,6 @@ def approve_shop(
     """Approve a shop action or replace a forbidden card purchase with Leave."""
 
     action, choice_id = str(proposal.get("action") or ""), proposal.get("choice_id")
-    required = result.get("required_choice_id")
-    if required is not None and (action != "choose" or choice_id != required):
-        target = str(result.get("purge_target") or "Strike")
-        return {
-            "data": {
-                "action": "choose",
-                "choice_id": int(required),
-                "targets": [target],
-                "reason": f"Honor the confirmed shop plan and remove {target} next.",
-            },
-            "approved": False,
-            "veto_reason": "proposal abandoned the confirmed affordable purge",
-        }
     allowed = {int(value) for value in result.get("allowed_card_choice_ids") or ()}
     if (
         action == "choose"
@@ -238,61 +215,6 @@ def _basic_purge(proposal: Mapping[str, Any]) -> bool:
         str(target).strip().removesuffix("+") in {"Strike", "Defend"}
         for target in proposal.get("targets") or ()
     )
-
-
-def _purge_commitment(request: DecisionRequest) -> dict[str, object]:
-    details = request.state.screen.details
-    if not details.get("purge_available"):
-        return {}
-    if _number(details.get("purge_cost")) > _number(request.state.facts.get("gold")):
-        return {}
-    committed = False
-    for message in reversed(room_messages(request.shared, request.scope.id)):
-        if message["role"] != "assistant":
-            continue
-        text = message["content"].casefold()
-        committed = (
-            ("then" in text or "next" in text)
-            and ("purge" in text or "remove" in text)
-        )
-        break
-    if not committed:
-        return {}
-    purge = next(
-        (
-            index
-            for index, choice in enumerate(request.state.screen.choices)
-            if "purge" in _shop_name(
-                choice.get("name") or choice.get("value") or choice.get("text")
-                if isinstance(choice, Mapping)
-                else choice
-            )
-        ),
-        None,
-    )
-    if purge is None:
-        return {}
-    names = [
-        name
-        for card in request.state.facts.get("deck") or ()
-        if (
-            name := str(
-                card.get("name") or card.get("id") or ""
-                if isinstance(card, Mapping)
-                else card
-            ).strip().removesuffix("+")
-        )
-    ]
-    curses = [
-        name
-        for name in names
-        if name not in {"Ascender's Bane"}
-        and any(token in name for token in ("Doubt", "Injury", "Normality", "Pain", "Regret", "Shame", "Writhe"))
-    ]
-    if not names:
-        return {}
-    target = curses[0] if curses else "Strike" if "Strike" in names else names[0]
-    return {"required_choice_id": purge, "purge_target": target}
 
 
 def _number(value: object) -> float:

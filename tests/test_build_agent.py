@@ -32,7 +32,11 @@ from spire_agent.subagents.build_context import (
 )
 from spire_agent.tools.winning_path import WinningPathCardPicker
 from spire_agent.tools.events import event_rule
-from spire_agent.tools.run_keys import RUN_KEYS_KEY
+from spire_agent.tools.run_keys import (
+    RUN_KEYS_KEY,
+    RUN_ROUTE_KEY,
+    readiness_fingerprint,
+)
 from spire_agent.tools.sts_db import StsDB
 from spire_agent.subagents.llm import (
     LLMMessage,
@@ -267,6 +271,8 @@ class BuildAgentTests(unittest.TestCase):
             ((), ({"name": "Meat on the Bone"},), "meat on the bone"),
             ((), ({"name": "Eternal Feather"},), "eternal feather"),
             ((), ({"name": "Meal Ticket"},), "meal ticket"),
+            ((), ({"name": "Burning Blood"},), "burning blood"),
+            ((), ({"name": "Blood Vial"},), "blood vial"),
         ):
             with self.subTest(source=source):
                 llm = FakeLLM([response(choice_id=0, reason="healing exists")])
@@ -478,6 +484,116 @@ class BuildAgentTests(unittest.TestCase):
 
         self.assertEqual(decision.command, "choose 1")
         self.assertEqual(decision.source, "build.llm")
+
+    def test_route_readiness_is_invalidated_after_battle_state_changes(self):
+        initial = build_state("EVENT")
+        route = {
+            "planned_rooms": ("Event", "Elite", "Boss"),
+            "encounter_readiness": {"entry_hp": 60},
+            "rest_readiness": {"entry_hp": 80},
+            "readiness_fingerprint": readiness_fingerprint(initial),
+        }
+        reducer = BuildConversationReducer()
+        shared = reducer.reduce(
+            {},
+            ContextEntry(
+                1,
+                "choose 0",
+                initial,
+                True,
+                decision=Decision(
+                    "choose 0", "map.llm", payload={RUN_ROUTE_KEY: route}
+                ),
+            ),
+        )
+        self.assertIn("readiness_fingerprint", shared[RUN_ROUTE_KEY])
+
+        changes = (
+            {"current_hp": 59},
+            {"gold": 98},
+            {"deck": (*initial.facts["deck"], {"name": "Shrug It Off"})},
+            {"relics": (*initial.facts["relics"], {"name": "Anchor"})},
+            {"potions": ({"name": "Fire Potion"},)},
+        )
+        for facts in changes:
+            with self.subTest(facts=facts):
+                changed = build_state("EVENT", facts=facts)
+                updated = reducer.reduce(
+                    shared,
+                    ContextEntry(
+                        2,
+                        "choose 0",
+                        changed,
+                        True,
+                        decision=Decision("choose 0", "build.llm"),
+                    ),
+                )
+                self.assertTrue(updated[RUN_ROUTE_KEY]["readiness_stale"])
+                self.assertNotIn("encounter_readiness", updated[RUN_ROUTE_KEY])
+                self.assertNotIn("rest_readiness", updated[RUN_ROUTE_KEY])
+
+    def test_unchanged_battle_state_keeps_route_readiness(self):
+        state = build_state("EVENT")
+        route = {
+            "encounter_readiness": {"entry_hp": 60},
+            "rest_readiness": {"entry_hp": 80},
+            "readiness_fingerprint": readiness_fingerprint(state),
+        }
+        reducer = BuildConversationReducer()
+        shared = reducer.reduce(
+            {},
+            ContextEntry(
+                1,
+                "choose 0",
+                state,
+                True,
+                decision=Decision(
+                    "choose 0", "map.llm", payload={RUN_ROUTE_KEY: route}
+                ),
+            ),
+        )
+
+        transitioned = build_state("REST", facts={"floor": 3})
+        updated = reducer.reduce(
+            shared,
+            ContextEntry(
+                2,
+                "choose 1",
+                transitioned,
+                True,
+                decision=Decision("choose 1", "build.llm"),
+            ),
+        )
+
+        self.assertIn("encounter_readiness", updated[RUN_ROUTE_KEY])
+        self.assertIn("rest_readiness", updated[RUN_ROUTE_KEY])
+
+    def test_route_readiness_without_provenance_is_stale(self):
+        state = build_state("EVENT")
+        updated = BuildConversationReducer().reduce(
+            {},
+            ContextEntry(
+                1,
+                "choose 0",
+                state,
+                True,
+                decision=Decision(
+                    "choose 0",
+                    "map.test",
+                    payload={
+                        RUN_ROUTE_KEY: {
+                            "encounter_readiness": {"entry_hp": 60},
+                            "rest_readiness": {"entry_hp": 80},
+                        }
+                    },
+                ),
+            ),
+        )
+
+        route = updated[RUN_ROUTE_KEY]
+        self.assertTrue(route["readiness_stale"])
+        self.assertNotIn("encounter_readiness", route)
+        self.assertNotIn("rest_readiness", route)
 
     def test_peace_pipe_removes_a_curse_instead_of_smithing(self):
         state = build_state(
@@ -806,8 +922,10 @@ class BuildAgentTests(unittest.TestCase):
             (),
         )
 
-    def test_shop_keeps_a_confirmed_affordable_purge_commitment(self):
-        llm = FakeLLM([response(choice_id=1, reason="buy Anger instead")])
+    def test_shop_reconsiders_a_purge_mentioned_in_prior_reasoning(self):
+        llm = FakeLLM(
+            [response(action="leave", choice_id=None, reason="save the gold")]
+        )
         state = build_state(
             "SHOP_SCREEN",
             commands=("choose", "leave"),
@@ -840,9 +958,11 @@ class BuildAgentTests(unittest.TestCase):
 
         decision = create_build_agent(llm).decide(request(state, shared=shared))
 
-        self.assertEqual(decision.command, "choose 0")
-        self.assertEqual(decision.source, "card_reward.shop_veto")
-        self.assertEqual(decision.payload["targets"], ("Strike",))
+        self.assertEqual(decision.command, "leave")
+        self.assertEqual(decision.source, "build.llm")
+        self.assertTrue(decision.payload["shop_card_policy"]["llm_approved"])
+        policy = prompt_payload(llm.requests[0])["card_reward_policy"]
+        self.assertNotIn("confirmed room plan", policy["instruction"])
 
     def test_shop_legalizes_an_unremovable_purge_target(self):
         llm = FakeLLM(

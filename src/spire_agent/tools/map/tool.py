@@ -18,7 +18,12 @@ from spire_agent.subagents.llm import (
     LLMRequest,
     PromptLanguage,
 )
-from spire_agent.tools.run_keys import RUN_ROUTE_KEY, key_view, route_context
+from spire_agent.tools.run_keys import (
+    RUN_ROUTE_KEY,
+    key_view,
+    readiness_fingerprint,
+    route_context,
+)
 from spire_agent.tools.sts_db import StsDB
 
 
@@ -76,11 +81,14 @@ class DefaultMapTool(MapTool):
 
         forced = forced_map_choice(state)
         if forced is not None:
-            return _decision(forced, "map.single_choice", "only legal boss entrance")
+            return _decision(
+                state, forced, "map.single_choice", "only legal boss entrance"
+            )
         graph, options = render_map(state)
         options, gate = _policy_options(request, options, self._encounter_readiness)
         if len(options) == 1 and options[0].get("planned_path"):
             return _decision(
+                state,
                 options[0],
                 str(gate.get("source") or "map.single_choice"),
                 str(gate.get("reason") or "only legal exit"),
@@ -98,6 +106,7 @@ class DefaultMapTool(MapTool):
             if len(options) != 1:
                 raise
             return _decision(
+                state,
                 _fallback_route(request, options[0]),
                 str(gate.get("source") or "map.llm_fallback"),
                 str(gate.get("reason") or "only legal exit after invalid LLM output"),
@@ -132,6 +141,7 @@ def _llm_map_decision(
         route, route_error = {}, str(error)
     option = {**legal[choice_id], **route}
     decision = _decision(
+        state,
         option,
         str(gate.get("source") or "map.llm"),
         str(gate.get("reason") or reason.strip()),
@@ -763,7 +773,15 @@ def _entity_facts(facts: Mapping[str, object]) -> dict[str, object]:
     return result
 
 
-def _decision(option: Mapping[str, object], source: str, reason: str) -> Decision:
+def _decision(
+    state: GameState,
+    option: Mapping[str, object],
+    source: str,
+    reason: str,
+) -> Decision:
+    route = route_context(option)
+    if "encounter_readiness" in route or "rest_readiness" in route:
+        route["readiness_fingerprint"] = readiness_fingerprint(state)
     return Decision(
         f"choose {option['choice_id']}",
         source,
@@ -772,7 +790,7 @@ def _decision(option: Mapping[str, object], source: str, reason: str) -> Decisio
             "choice_id": option["choice_id"],
             "next_node": option["node"],
             "room": option["room"],
-            RUN_ROUTE_KEY: route_context(option),
+            RUN_ROUTE_KEY: route,
         },
     )
 

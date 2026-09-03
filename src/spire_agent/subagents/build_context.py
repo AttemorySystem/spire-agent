@@ -11,6 +11,7 @@ from spire_agent.tools.run_keys import (
     RUN_ROUTE_KEY,
     acquire,
     initial_keys,
+    readiness_fingerprint,
 )
 BUILD_CONVERSATION_KEY = "build_conversation"
 BUILD_EXCHANGE_KEY = "build_exchange"
@@ -32,16 +33,20 @@ class BuildConversationReducer:
         if not entry.confirmed:
             return result
         decision = entry.decision
+        route = decision.payload.get(RUN_ROUTE_KEY) if decision is not None else None
         if decision is not None:
             acquired = decision.payload.get("acquired_key")
             if acquired:
                 result[RUN_KEYS_KEY] = acquire(result, entry.state, acquired)
-            route = decision.payload.get(RUN_ROUTE_KEY)
             if isinstance(route, Mapping):
-                result[RUN_ROUTE_KEY] = dict(route)
+                result[RUN_ROUTE_KEY] = _invalidate_readiness(route, entry.state)
             construction = decision.payload.get(RUN_CONSTRUCTION_KEY)
             if isinstance(construction, Mapping):
                 result[RUN_CONSTRUCTION_KEY] = dict(construction)
+        if RUN_ROUTE_KEY in result and not isinstance(route, Mapping):
+            result[RUN_ROUTE_KEY] = _invalidate_readiness(
+                result[RUN_ROUTE_KEY], entry.state
+            )
         if entry.state.terminal or entry.state.owner_hint is not AgentKind.BUILD:
             result.pop(BUILD_CONVERSATION_KEY, None)
             return result
@@ -166,6 +171,23 @@ def context_delta(
 
     visit((), _plain(previous), _plain(current))
     return {"set": changed, "remove": removed}
+
+
+def _invalidate_readiness(route: object, state: GameState) -> object:
+    if not isinstance(route, Mapping):
+        return route
+    expected = route.get("readiness_fingerprint")
+    has_readiness = "encounter_readiness" in route or "rest_readiness" in route
+    if not has_readiness or (
+        expected is not None and expected == readiness_fingerprint(state)
+    ):
+        return dict(route)
+    result = dict(route)
+    result.pop("encounter_readiness", None)
+    result.pop("rest_readiness", None)
+    result.pop("readiness_fingerprint", None)
+    result["readiness_stale"] = True
+    return result
 
 
 def _plain(value: object) -> Any:

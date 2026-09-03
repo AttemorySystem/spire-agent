@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+from hashlib import sha256
 import re
 from typing import Any
 
@@ -250,6 +251,36 @@ def route_context(option: Mapping[str, object]) -> dict[str, object]:
     }
 
 
+def readiness_fingerprint(state: GameState) -> str:
+    """Identify the battle configuration used by cached route evidence."""
+
+    facts = state.facts
+
+    def entities(key: str, *fields: str) -> tuple[str, ...]:
+        rows = (
+            (
+                str(item.get("id") or item.get("name") or ""),
+                *(item.get(field) for field in fields),
+            )
+            for item in facts.get(key) or ()
+            if isinstance(item, Mapping)
+        )
+        return tuple(sorted(map(repr, rows)))
+
+    core = tuple(
+        facts.get(key)
+        for key in (
+            "class", "ascension_level", "act", "current_hp", "max_hp", "gold"
+        )
+    )
+    payload = core + (
+        entities("deck", "upgrades", "upgrade", "misc", "bottled"),
+        entities("relics", "counter"),
+        entities("potions"),
+    )
+    return sha256(repr(payload).encode()).hexdigest()[:16]
+
+
 def _key_view(owned: Mapping[str, object]) -> dict[str, object]:
     missing = [colour for colour in _COLOURS if not bool(owned.get(colour))]
     return {
@@ -294,6 +325,7 @@ __all__ = [
     "acquire",
     "initial_keys",
     "key_view",
+    "readiness_fingerprint",
     "rest_policy",
     "reward_key",
     "route_context",
