@@ -50,6 +50,17 @@ class FakeStructuredClient:
         return self.result
 
 
+class SequenceStructuredClient:
+    def __init__(self, *outcomes):
+        self.outcomes = list(outcomes)
+
+    def complete(self, request):
+        outcome = self.outcomes.pop(0)
+        if isinstance(outcome, BaseException):
+            raise outcome
+        return outcome
+
+
 class RunDirectoryTests(unittest.TestCase):
     def test_bind_uses_canonical_seed_as_directory_name(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -261,6 +272,23 @@ class OpenAICompatibleClientTests(unittest.TestCase):
 
 
 class LLMRecordingTests(unittest.TestCase):
+    def test_structured_output_error_is_retried_and_each_call_is_recorded(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = RunDirectory(Path(temporary) / "runs")
+            directory.bind("ABC123")
+            result = LLMResponse({"choice_id": 0}, raw_text='{"choice_id":0}')
+            client = RecordingLLMClient(
+                SequenceStructuredClient(LLMOutputError("empty"), result),
+                LLMCallRecorder(directory),
+            )
+
+            self.assertIs(client.complete(llm_request()), result)
+            records = [
+                json.loads(path.read_text())
+                for path in sorted((directory.path / "llm").iterdir())
+            ]
+            self.assertEqual([row["status"] for row in records], ["error", "success"])
+
     def test_success_records_complete_input_and_output_in_one_file(self):
         with tempfile.TemporaryDirectory() as temporary:
             directory = RunDirectory(Path(temporary) / "runs")
@@ -298,7 +326,7 @@ class LLMRecordingTests(unittest.TestCase):
                 "Compared both routes.",
             )
 
-    def test_failure_records_raw_output_in_the_same_file(self):
+    def test_each_failed_retry_records_raw_output(self):
         with tempfile.TemporaryDirectory() as temporary:
             directory = RunDirectory(Path(temporary) / "runs")
             directory.bind("ABC123")
@@ -312,11 +340,12 @@ class LLMRecordingTests(unittest.TestCase):
                 client.complete(llm_request())
 
             files = list((directory.path / "llm").iterdir())
-            self.assertEqual(len(files), 1)
-            record = json.loads(files[0].read_text(encoding="utf-8"))
-            self.assertEqual(record["status"], "error")
-            self.assertEqual(record["response"]["raw_text"], "broken output")
-            self.assertEqual(record["error"]["type"], "LLMOutputError")
+            self.assertEqual(len(files), 2)
+            for path in files:
+                record = json.loads(path.read_text(encoding="utf-8"))
+                self.assertEqual(record["status"], "error")
+                self.assertEqual(record["response"]["raw_text"], "broken output")
+                self.assertEqual(record["error"]["type"], "LLMOutputError")
 
     def test_unbound_directory_prevents_the_model_call(self):
         with tempfile.TemporaryDirectory() as temporary:

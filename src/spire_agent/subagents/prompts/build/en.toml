@@ -11,9 +11,10 @@ Return exactly one JSON object containing one action from the current
 available_actions. For choose, use a real zero-based choice_id. For every other
 action, choice_id must be null. The
 targets array is normally empty. Fill it only when the chosen option immediately
-opens a card selector, and list every required target in execution order using
-the exact card names in the current deck. Use `Card+` when the upgraded copy is
-the intended target. Keep the reason short.
+opens a selector over cards in the current deck, and list every required target
+in execution order using exact deck card names. A reward selector that reveals
+new cards uses empty targets and is decided after it appears. Use `Card+` when
+the upgraded copy is the intended target. Keep the reason short.
 
 All four fields are required. Return only this JSON shape:
 {"action":"choose|skip|proceed|leave|confirm","choice_id":0,"targets":[],"reason":"short reason"}

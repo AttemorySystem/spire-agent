@@ -6,9 +6,9 @@ prompt = """
 本房间中更早的消息记录了已确认决策；原计划仍合法时继续执行，但最新 current state 始终优先。
 
 只返回一个 JSON object，其中包含 current available_actions 中的一条动作。choose 必须使用真实的
-零基 choice_id；其他动作的 choice_id 必须为 null。targets 通常为空；只有所选选项会立即打开选牌界面时，才按执行顺序填写
-全部目标，并使用当前牌组中的准确卡名；目标是升级牌时必须使用 `Card+`
-格式。reason 保持简短。
+零基 choice_id；其他动作的 choice_id 必须为 null。targets 通常为空；只有所选选项会立即打开
+从当前牌组选择目标的界面时，才按执行顺序填写全部目标，并使用牌组中的准确卡名。新卡奖励界面
+的 targets 为空，等候选牌实际出现后再决定。目标是升级牌时必须使用 `Card+` 格式。reason 保持简短。
 
 四个字段都必须存在。只返回以下 JSON 结构：
 {"action":"choose|skip|proceed|leave|confirm","choice_id":0,"targets":[],"reason":"简短理由"}

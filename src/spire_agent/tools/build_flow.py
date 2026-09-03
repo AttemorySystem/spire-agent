@@ -57,24 +57,16 @@ def build_choice_policy(request: DecisionRequest) -> dict[str, object] | None:
 
 
 _SELECT_MARKERS = (
-    "choose a card",
-    "remove a card",
-    "remove card",
-    "card removal",
-    "purge",
-    "transform a card",
-    "transform card",
-    "transform 2",
-    "transform 3",
-    "duplicate a card",
-    "duplicate card",
-    "upgrade a card",
-    "upgrade card",
-    "smith",
-    "toke",
-    "empty cage",
-    "astrolabe",
-    "dolly's mirror",
+    ("purge", "remove"),
+    ("toke", "remove"),
+    ("empty cage", "remove"),
+    ("smith", "upgrade"),
+    ("astrolabe", "transform"),
+    ("dolly's mirror", "duplicate"),
+)
+_MANUAL_CARD_EFFECT = re.compile(
+    r"\b(remove|transform|duplicate|upgrade)\b"
+    r"(?:(?!\b(?:all|random)\b)[^.;])*?\bcards?\b"
 )
 _UNREMOVABLE_CARDS = frozenset(
     {"ascender's bane", "curse of the bell", "necronomicurse"}
@@ -541,12 +533,22 @@ def _shop_exit_continuation(request: DecisionRequest) -> ContinuationChange:
 
 
 def _opens_selector(state: GameState, choice_id: int) -> bool:
+    return bool(_selection_kinds(state, choice_id))
+
+
+def _choice_text(state: GameState, choice_id: int) -> str:
     text = _choice_label(state.screen.choices[choice_id])
     options = _sequence(state.screen.details.get("options"))
     if choice_id < len(options):
         text += " " + _choice_label(options[choice_id])
-    normalized = _normalize_name(text)
-    return any(marker in normalized for marker in _SELECT_MARKERS)
+    return _normalize_name(text)
+
+
+def _selection_kinds(state: GameState, choice_id: int) -> frozenset[str]:
+    text = _choice_text(state, choice_id)
+    kinds = set(_MANUAL_CARD_EFFECT.findall(text))
+    kinds.update(kind for marker, kind in _SELECT_MARKERS if marker in text)
+    return frozenset(kinds)
 
 
 def _validate_selection_targets(
@@ -570,11 +572,11 @@ def _validate_selection_targets(
         row[0] += count
         row[1] += count - upgraded
 
-    option = _normalize_name(_choice_label(state.screen.choices[choice_id]))
-    if "purge" in option or "remove" in option:
+    kinds = _selection_kinds(state, choice_id)
+    if "remove" in kinds:
         for name in _UNREMOVABLE_CARDS:
             available.pop(name, None)
-    upgrade_only = "smith" in option or "upgrade" in option
+    upgrade_only = "upgrade" in kinds and "remove" not in kinds
     requested: dict[str, int] = {}
     for target in targets:
         name = _normalize_name(target).removesuffix("+")
@@ -594,8 +596,7 @@ def _validate_selection_targets(
 def _legalize_removal_targets(
     state: GameState, choice_id: int, targets: tuple[str, ...]
 ) -> tuple[str, ...]:
-    option = _normalize_name(_choice_label(state.screen.choices[choice_id]))
-    if not ({"purge", "remove"} & set(option.split())) or not any(
+    if "remove" not in _selection_kinds(state, choice_id) or not any(
         _normalize_name(target).removesuffix("+") in _UNREMOVABLE_CARDS
         for target in targets
     ):

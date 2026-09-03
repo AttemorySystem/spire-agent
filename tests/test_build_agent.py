@@ -1495,6 +1495,104 @@ class BuildAgentTests(unittest.TestCase):
         self.assertEqual(payload["event_rule"]["key"], "neow")
         self.assertFalse(payload["event_rule"]["prompt"].isascii())
 
+    def test_neow_distinguishes_card_rewards_from_deck_selectors(self):
+        choices = (
+            "Choose a Card to obtain",
+            "Obtain 3 random Potions",
+            "Take 18 damage Remove 2 Cards",
+            "Lose your starting Relic Obtain a random boss Relic",
+        )
+        reward_llm = FakeLLM([response(choice_id=0)])
+        reward = create_build_agent(reward_llm).decide(request(build_state(
+            "EVENT",
+            choices=choices,
+            details={"event_id": "Neow Event"},
+        )))
+        remove_llm = FakeLLM([
+            response(choice_id=2, targets=("Strike", "Defend"))
+        ])
+        remove = create_build_agent(remove_llm).decide(request(build_state(
+            "EVENT",
+            choices=choices,
+            details={"event_id": "Neow Event"},
+        )))
+
+        self.assertEqual(reward.command, "choose 0")
+        self.assertEqual(len(reward_llm.requests), 1)
+        self.assertEqual(remove.continuation.value.data["targets"], ("Strike", "Defend"))
+        self.assertEqual(len(remove_llm.requests), 1)
+
+    def test_automatic_upgrades_do_not_open_a_card_selector(self):
+        for label, text in (
+            ("enter", "[Enter] Upgrade 2 random cards. Lose 21 HP."),
+            ("adjustments", "[Adjustments] Upgrade 2 random cards."),
+            ("i am awake", "[I am Awake] Upgrade all Cards. You can no longer heal."),
+        ):
+            with self.subTest(label=label):
+                llm = FakeLLM([response(choice_id=0)])
+                state = build_state(
+                    "EVENT",
+                    choices=(label, "leave"),
+                    details={"options": ({"text": text}, {"text": "[Leave]"})},
+                )
+
+                decision = create_build_agent(llm).decide(request(state))
+
+                self.assertEqual(decision.command, "choose 0")
+                self.assertEqual(decision.payload["targets"], ())
+
+    def test_full_service_selects_only_its_removal_target(self):
+        llm = FakeLLM([response(choice_id=0, targets=("Necronomicurse",))])
+        state = build_state(
+            "EVENT",
+            choices=("full service", "leave"),
+            details={
+                "options": (
+                    {"text": "[Full Service] Remove a card and upgrade a random card."},
+                    {"text": "[Leave]"},
+                )
+            },
+            facts={
+                "deck": (
+                    {"name": "Strike", "upgrades": 1},
+                    {"name": "Necronomicurse"},
+                )
+            },
+        )
+
+        decision = create_build_agent(llm).decide(request(state))
+
+        self.assertEqual(decision.payload["targets"], ("Strike",))
+        self.assertEqual(decision.continuation.value.data["flow"], "selection")
+
+    def test_forge_details_require_an_unupgraded_target(self):
+        llm = FakeLLM([
+            response(choice_id=0, targets=("Dark Embrace",)),
+            response(choice_id=0, targets=("True Grit",)),
+        ])
+        state = build_state(
+            "EVENT",
+            choices=("forge", "leave"),
+            details={
+                "options": (
+                    {"text": "[Forge] Upgrade a card in your deck."},
+                    {"text": "[Leave]"},
+                )
+            },
+            facts={
+                "deck": (
+                    {"name": "Dark Embrace", "upgrades": 1},
+                    {"name": "True Grit"},
+                )
+            },
+        )
+
+        decision = create_build_agent(llm).decide(request(state))
+
+        self.assertEqual(decision.payload["targets"], ("True Grit",))
+        self.assertEqual(len(llm.requests), 2)
+        self.assertIn("no matching unupgraded deck copy", llm.requests[1].messages[-1].content)
+
     def test_rest_targets_execute_transactionally_across_grid(self):
         llm = FakeLLM(
             [response(choice_id=1, targets=("Strike", "Defend"))]

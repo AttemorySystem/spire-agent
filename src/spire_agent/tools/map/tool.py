@@ -12,7 +12,12 @@ from typing import Any
 
 from spire_agent.contracts import AgentKind, Decision, DecisionRequest, GameState
 from spire_agent.subagents.map import MapDecisionError, MapTool
-from spire_agent.subagents.llm import LLMMessage, LLMRequest, PromptLanguage
+from spire_agent.subagents.llm import (
+    LLMMessage,
+    LLMOutputError,
+    LLMRequest,
+    PromptLanguage,
+)
 from spire_agent.tools.run_keys import RUN_ROUTE_KEY, key_view, route_context
 from spire_agent.tools.sts_db import StsDB
 
@@ -84,48 +89,68 @@ class DefaultMapTool(MapTool):
         complete = getattr(self._llm, "complete", None)
         if not callable(complete):
             raise TypeError("MapAgent LLM has no complete() method")
-        response = complete(build_prompt(request, graph, options, gate, self._language))
-        data = getattr(response, "data", None)
-        if not isinstance(data, Mapping):
-            raise MapDecisionError("LLM response data must be an object")
-        choice_id = data.get("choice_id")
-        legal = {int(option["choice_id"]): option for option in options}
-        if isinstance(choice_id, bool) or not isinstance(choice_id, int):
-            raise MapDecisionError("LLM response choice_id must be an integer")
-        if choice_id not in legal:
-            raise MapDecisionError(
-                f"LLM selected illegal map choice {choice_id}; "
-                f"legal ids are {sorted(legal)}"
-            )
-        reason = data.get("reason")
-        if not isinstance(reason, str) or not reason.strip():
-            raise MapDecisionError("LLM response reason must be a non-empty string")
-        route_error = ""
         try:
-            route = _validated_route(state, legal[choice_id], data.get("path"))
-        except MapDecisionError as error:
-            route, route_error = {}, str(error)
-        option = {**legal[choice_id], **route}
-        decision = _decision(
-            option,
-            str(gate.get("source") or "map.llm"),
-            str(gate.get("reason") or reason.strip()),
+            response = complete(
+                build_prompt(request, graph, options, gate, self._language)
+            )
+            return _llm_map_decision(state, response, options, gate)
+        except (LLMOutputError, MapDecisionError):
+            if len(options) != 1:
+                raise
+            return _decision(
+                _fallback_route(request, options[0]),
+                str(gate.get("source") or "map.llm_fallback"),
+                str(gate.get("reason") or "only legal exit after invalid LLM output"),
+            )
+
+
+def _llm_map_decision(
+    state: GameState,
+    response: object,
+    options: tuple[dict[str, object], ...],
+    gate: Mapping[str, object],
+) -> Decision:
+    data = getattr(response, "data", None)
+    if not isinstance(data, Mapping):
+        raise MapDecisionError("LLM response data must be an object")
+    choice_id = data.get("choice_id")
+    legal = {int(option["choice_id"]): option for option in options}
+    if isinstance(choice_id, bool) or not isinstance(choice_id, int):
+        raise MapDecisionError("LLM response choice_id must be an integer")
+    if choice_id not in legal:
+        raise MapDecisionError(
+            f"LLM selected illegal map choice {choice_id}; "
+            f"legal ids are {sorted(legal)}"
         )
-        model, usage = getattr(response, "model", ""), getattr(response, "usage", {})
-        metrics = {
-            **({"model": model} if model else {}),
-            **({"usage": usage} if usage else {}),
-            **({"route_error": route_error} if route_error else {}),
-        }
-        if not metrics:
-            return decision
-        return Decision(
-            decision.command,
-            decision.source,
-            decision.reason,
-            payload=decision.payload,
-            metrics=metrics,
-        )
+    reason = data.get("reason")
+    if not isinstance(reason, str) or not reason.strip():
+        raise MapDecisionError("LLM response reason must be a non-empty string")
+    route_error = ""
+    try:
+        route = _validated_route(state, legal[choice_id], data.get("path"))
+    except MapDecisionError as error:
+        route, route_error = {}, str(error)
+    option = {**legal[choice_id], **route}
+    decision = _decision(
+        option,
+        str(gate.get("source") or "map.llm"),
+        str(gate.get("reason") or reason.strip()),
+    )
+    model, usage = getattr(response, "model", ""), getattr(response, "usage", {})
+    metrics = {
+        **({"model": model} if model else {}),
+        **({"usage": usage} if usage else {}),
+        **({"route_error": route_error} if route_error else {}),
+    }
+    if not metrics:
+        return decision
+    return Decision(
+        decision.command,
+        decision.source,
+        decision.reason,
+        payload=decision.payload,
+        metrics=metrics,
+    )
 
 
 def render_map(state: GameState) -> tuple[str, tuple[dict[str, object], ...]]:
@@ -596,6 +621,20 @@ def _validated_route(
             "LLM response path final room does not lead to BOSS"
         )
     return _route_payload(path, nodes)
+
+
+def _fallback_route(
+    request: DecisionRequest,
+    option: Mapping[str, object],
+) -> Mapping[str, object]:
+    route = request.shared.get(RUN_ROUTE_KEY)
+    path = route.get("planned_path") if isinstance(route, Mapping) else None
+    labels = tuple(str(item) for item in _sequence(path))
+    try:
+        remaining = labels[labels.index(str(option["node"])):]
+        return {**option, **_validated_route(request.state, option, remaining)}
+    except (MapDecisionError, ValueError):
+        return option
 
 
 def _route_payload(

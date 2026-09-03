@@ -12,7 +12,12 @@ from spire_agent.contracts import (
 )
 from spire_agent.subagents.map import MapDecisionError, create_map_agent as compose_map_agent
 from spire_agent.subagents.build_context import RUN_CONSTRUCTION_KEY
-from spire_agent.subagents.llm import LLMRequest, LLMResponse, PromptLanguage
+from spire_agent.subagents.llm import (
+    LLMOutputError,
+    LLMRequest,
+    LLMResponse,
+    PromptLanguage,
+)
 from spire_agent.tools.map import DefaultMapTool, MapError, render_map
 from spire_agent.tools.map.tool import _needed_families, _route_at_risk
 
@@ -73,6 +78,32 @@ def map_state(
             "potions": [{"name": "Potion Slot"}],
             "map": nodes,
         },
+    )
+
+
+def forced_branch_state() -> GameState:
+    return map_state(
+        choices=("x=0",),
+        nodes=[
+            {
+                "x": 0,
+                "y": 0,
+                "symbol": "M",
+                "children": [{"x": 0, "y": 1}, {"x": 1, "y": 1}],
+            },
+            {
+                "x": 0,
+                "y": 1,
+                "symbol": "R",
+                "children": [{"x": 3, "y": 16}],
+            },
+            {
+                "x": 1,
+                "y": 1,
+                "symbol": "$",
+                "children": [{"x": 3, "y": 16}],
+            },
+        ],
     )
 
 
@@ -632,29 +663,7 @@ class ConcreteMapAgentTests(unittest.TestCase):
         self.assertEqual(client.requests, [])
 
     def test_forced_current_exit_still_plans_a_later_branch(self):
-        state = map_state(
-            choices=("x=0",),
-            nodes=[
-                {
-                    "x": 0,
-                    "y": 0,
-                    "symbol": "M",
-                    "children": [{"x": 0, "y": 1}, {"x": 1, "y": 1}],
-                },
-                {
-                    "x": 0,
-                    "y": 1,
-                    "symbol": "R",
-                    "children": [{"x": 3, "y": 16}],
-                },
-                {
-                    "x": 1,
-                    "y": 1,
-                    "symbol": "$",
-                    "children": [{"x": 3, "y": 16}],
-                },
-            ],
-        )
+        state = forced_branch_state()
         client = FakeLLM(
             {
                 "choice_id": 0,
@@ -672,30 +681,45 @@ class ConcreteMapAgentTests(unittest.TestCase):
         )
         self.assertEqual(len(client.requests), 1)
 
-    def test_future_rests_count_only_the_selected_route(self):
-        state = map_state(
-            choices=("x=0",),
-            nodes=[
-                {
-                    "x": 0,
-                    "y": 0,
-                    "symbol": "M",
-                    "children": [{"x": 0, "y": 1}, {"x": 1, "y": 1}],
-                },
-                {
-                    "x": 0,
-                    "y": 1,
-                    "symbol": "R",
-                    "children": [{"x": 3, "y": 16}],
-                },
-                {
-                    "x": 1,
-                    "y": 1,
-                    "symbol": "$",
-                    "children": [{"x": 3, "y": 16}],
-                },
-            ],
+    def test_empty_llm_output_cannot_block_a_forced_current_exit(self):
+        class EmptyLLM:
+            def complete(self, request):
+                raise LLMOutputError("LLM response content is empty")
+
+        shared = {
+            "run_route": {
+                "planned_path": ("L00C0", "L01C1", "BOSS"),
+            }
+        }
+        decision = create_map_agent(EmptyLLM()).decide(
+            request(forced_branch_state(), shared=shared)
         )
+
+        self.assertEqual(decision.command, "choose 0")
+        self.assertEqual(decision.source, "map.llm_fallback")
+        self.assertEqual(
+            decision.payload["run_route"]["planned_rooms"],
+            ("Monster", "Shop", "Boss"),
+        )
+
+    def test_malformed_llm_data_cannot_block_a_forced_current_exit(self):
+        for data in (
+            [],
+            {},
+            {"choice_id": "0", "reason": "wrong type"},
+            {"choice_id": 2, "reason": "illegal choice"},
+            {"choice_id": 0, "reason": 1},
+        ):
+            with self.subTest(data=data):
+                decision = create_map_agent(FakeLLM(data)).decide(
+                    request(forced_branch_state())
+                )
+
+                self.assertEqual(decision.command, "choose 0")
+                self.assertEqual(decision.source, "map.llm_fallback")
+
+    def test_future_rests_count_only_the_selected_route(self):
+        state = forced_branch_state()
         client = FakeLLM(
             {
                 "choice_id": 0,

@@ -14,7 +14,7 @@ import time
 from typing import Any
 
 from spire_agent.adapters.openai_llm import LLMSettings, OpenAICompatibleLLMClient
-from spire_agent.subagents.llm import LLMRequest, LLMResponse
+from spire_agent.subagents.llm import LLMOutputError, LLMRequest, LLMResponse
 
 from .log_io import jsonable, write_json
 from .run_directory import RunDirectory
@@ -178,17 +178,21 @@ class RecordingLLMClient:
         complete = getattr(self._client, "complete", None)
         if not callable(complete):
             raise TypeError("recorded LLM has no complete() method")
-        call = self._recorder.begin(request)
-        try:
-            response = complete(request)
-        except BaseException as error:
+        for attempt in range(2):
+            call = self._recorder.begin(request)
             try:
-                self._recorder.failure(call, error)
-            except LLMAuditError as audit_error:
-                raise audit_error from error
-            raise
-        self._recorder.success(call, response)
-        return response
+                response = complete(request)
+            except BaseException as error:
+                try:
+                    self._recorder.failure(call, error)
+                except LLMAuditError as audit_error:
+                    raise audit_error from error
+                if attempt == 0 and isinstance(error, LLMOutputError):
+                    continue
+                raise
+            self._recorder.success(call, response)
+            return response
+        raise AssertionError("unreachable")
 
 
 def create_run_llm_client(
