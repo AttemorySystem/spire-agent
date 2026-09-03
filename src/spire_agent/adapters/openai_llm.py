@@ -62,7 +62,7 @@ class OpenAICompatibleLLMClient:
             api_key=settings.api_key,
             base_url=settings.base_url,
             timeout=120.0,
-            max_retries=0,
+            max_retries=2,
         )
         self._stream_event = stream_event
 

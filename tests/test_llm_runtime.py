@@ -135,6 +135,19 @@ class LLMSettingsTests(unittest.TestCase):
 
 
 class OpenAICompatibleClientTests(unittest.TestCase):
+    @patch("spire_agent.adapters.openai_llm.OpenAI")
+    def test_provider_retries_transient_transport_failures(self, provider):
+        settings = LLMSettings("https://example.test", "model", "secret")
+
+        OpenAICompatibleLLMClient(settings)
+
+        provider.assert_called_once_with(
+            api_key="secret",
+            base_url="https://example.test",
+            timeout=120.0,
+            max_retries=2,
+        )
+
     def test_returns_raw_and_decoded_json_without_hidden_retry_options(self):
         response = SimpleNamespace(
             choices=[
