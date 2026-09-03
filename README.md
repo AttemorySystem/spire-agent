@@ -19,10 +19,14 @@
 
 - Characters: Ironclad and Defect
 - Platforms: Linux and macOS tested; Windows untested
-- Current results:
-    - Ironclad: several Ascension 20 Heart wins ([video](https://www.bilibili.com/video/BV1ewuo66EP7/)).
-      In a recent 12-run sample, the average final floor was 38.6; six runs reached Act 3, including two that reached Act 4.
-    - Defect: reached the Act 4 stage multiple times ([video](https://www.bilibili.com/video/BV1Cztx6SEVx/))
+- Current results: both
+  [Ironclad](https://www.bilibili.com/video/BV1ewuo66EP7/) and
+  [Defect](https://www.bilibili.com/video/BV14Sto65EQz/) have achieved multiple
+  Ascension 20 Heart wins.
+    - Ironclad: In a recent 12-run sample, the average final floor was 38.6;
+      six runs reached Act 3, including two that reached Act 4.
+    - Defect: Evaluation is ongoing; early results are broadly comparable to
+      the Ironclad results above.
 
 ![Spire Agent playing Slay the Spire](docs/assets/demo.gif)
 

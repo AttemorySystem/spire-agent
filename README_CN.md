@@ -17,10 +17,12 @@
 
 - 角色：铁甲战士、故障机器人
 - 平台：已在 Linux 和 macOS 上测试；Windows 尚未测试
-- 当前成绩：
-    - 铁甲战士：多次完成进阶 20 心脏通关（[视频](https://www.bilibili.com/video/BV1ewuo66EP7/)）。
-      在最近的 12 局样本中，平均终局层数为 38.6；其中 6 局进入第三幕，包括 2 局进入第四幕。
-    - 故障机器人：多次进入第四幕（[视频](https://www.bilibili.com/video/BV1Cztx6SEVx/)）
+- 当前成绩：铁甲战士和故障机器人均已多次完成进阶 20 心脏通关
+  （[铁甲战士](https://www.bilibili.com/video/BV1ewuo66EP7/)、
+  [故障机器人](https://www.bilibili.com/video/BV14Sto65EQz/)）。
+    - 铁甲战士：在最近的 12 局样本中，平均终局层数为 38.6；其中 6 局
+      进入第三幕，包括 2 局进入第四幕。
+    - 故障机器人：评测仍在进行；初步结果与上述铁甲战士成绩大致相当。
 
 ![Spire Agent 正在游玩杀戮尖塔](docs/assets/demo.gif)
 
