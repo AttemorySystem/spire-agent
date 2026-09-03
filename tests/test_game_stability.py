@@ -368,7 +368,11 @@ class GameStabilityToolTests(unittest.TestCase):
         before = observation(
             "GRID",
             deck=deck,
-            screen_state={"num_cards": 2, "for_transform": True},
+            screen_state={
+                "num_cards": 2,
+                "for_transform": True,
+                "selected_cards": [deck[0]],
+            },
         )
         pending = observation("EVENT", deck=deck[:9])
         still_pending = deepcopy(pending)
@@ -411,16 +415,22 @@ class GameStabilityToolTests(unittest.TestCase):
             "GRID",
             deck=deck,
             room_type="NeowRoom",
-            screen_state={"num_cards": 2, "for_transform": False},
+            screen_state={
+                "num_cards": 2,
+                "for_transform": False,
+                "for_purge": False,
+                "grid_operation": "TRANSFORM",
+                "selected_cards": [deck[0]],
+            },
         )
         pending = observation("EVENT", deck=deck[:9])
         committed = observation("EVENT", deck=deck)
-        driver = Driver(committed)
+        driver = Driver(pending, committed)
 
         result = self.settle(before, pending, "choose 1", driver)
 
         self.assertIs(result, committed)
-        self.assertEqual(driver.calls, ["wait 10"])
+        self.assertEqual(driver.calls, ["wait 10", "wait 10"])
 
     def test_grid_purge_allows_deck_to_shrink(self):
         deck = [{"name": "Strike"}, {"name": "Defend"}]
@@ -434,6 +444,39 @@ class GameStabilityToolTests(unittest.TestCase):
 
         self.assertIs(result, purged)
         self.assertEqual(driver.calls, ["wait 10"])
+
+    def test_neow_multi_remove_allows_incorrect_unflagged_grid_to_shrink(self):
+        deck = [{"name": f"Card {index}"} for index in range(11)]
+        before = observation(
+            "GRID",
+            deck=deck,
+            room_type="NeowRoom",
+            screen_state={
+                "num_cards": 2,
+                "for_purge": False,
+                "for_transform": False,
+                "grid_operation": "REMOVE",
+                "selected_cards": [deck[0]],
+            },
+        )
+        removed = observation("EVENT", deck=deck[2:])
+        driver = Driver(removed)
+
+        result = self.settle(before, removed, "choose 1", driver)
+
+        self.assertIs(result, removed)
+        self.assertEqual(driver.calls, ["wait 10"])
+
+    def test_grid_operation_does_not_change_replay_boundary(self):
+        plain = observation("GRID", screen_state={"for_purge": False})
+        structured = observation(
+            "GRID",
+            screen_state={"for_purge": False, "grid_operation": "REMOVE"},
+        )
+
+        self.assertEqual(
+            stable_boundary_key(plain), stable_boundary_key(structured)
+        )
 
     def test_open_combat_selection_survives_the_command_barrier(self):
         before = observation(

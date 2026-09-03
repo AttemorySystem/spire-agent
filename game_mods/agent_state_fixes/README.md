@@ -44,6 +44,9 @@ It currently adds:
   effects such as speech bubbles do not block decisions; card movement, timed
   event animations, player escape, and battle completion do because their
   completion can change game state.
+- a language-independent `grid_operation`, including ambiguous Neow remove and
+  transform rewards, so stability checks survive localization and manual
+  takeover.
 - discard-to-hand cost overrides remain atomic across bridge frames, so effects
   such as Liquid Memories keep their temporary cost in live play and replay.
 

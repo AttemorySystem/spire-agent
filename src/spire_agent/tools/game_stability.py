@@ -169,11 +169,13 @@ def _enemy_signature(enemies: object) -> list[tuple[object, ...]]:
 def _transition_signature(observation: object) -> str:
     raw = _raw_state(observation)
     game = _mapping(raw.get("game_state"))
+    screen_state = dict(_mapping(game.get("screen_state")))
+    screen_state.pop("grid_operation", None)
     combat = _mapping(game.get("combat_state"))
     player = _mapping(combat.get("player"))
     value = {
         "screen_type": _screen(observation),
-        "screen_state": _logical_value(game.get("screen_state")),
+        "screen_state": _logical_value(screen_state),
         "choices": _logical_value(_choices(observation)),
         "commands": sorted(_commands(observation)),
         "act": game.get("act"),
@@ -380,7 +382,11 @@ def _grid_expected_deck_size(
     if pandora_confirmation:
         expected = _deck_size(before) + len(confirmation_cards)
         return expected if _deck_size(after) < expected else None
-    if family != "choose" or screen_state.get("for_purge"):
+    if (
+        family != "choose"
+        or screen_state.get("for_purge")
+        or screen_state.get("grid_operation") == "REMOVE"
+    ):
         return None
     before_size = _deck_size(before)
     return before_size if _deck_size(after) < before_size else None
