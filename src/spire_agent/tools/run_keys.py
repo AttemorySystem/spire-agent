@@ -100,13 +100,21 @@ def rest_policy(request: DecisionRequest) -> dict[str, Any] | None:
         and _expected_end_hp(rested, threat["family"])
         > _expected_end_hp(readiness, threat["family"])
     )
+    survival_improved = (
+        {"AT_RISK": 0, "INCONCLUSIVE": 1, "SUPPORTED": 2}.get(
+            str(rested_threat["status"]), -1
+        )
+        > {"AT_RISK": 0, "INCONCLUSIVE": 1, "SUPPORTED": 2}.get(
+            str(threat["status"]), -1
+        )
+    )
     if (
         rest is not None
         and fresh
         and (
             (
                 threat["status"] in {"AT_RISK", "INCONCLUSIVE"}
-                and rested_threat["status"] == "SUPPORTED"
+                and survival_improved
             )
             or apotheosis_rest
         )
@@ -176,12 +184,13 @@ def route_threat(
     hallway_evidence = isinstance(groups, Mapping) and (
         "WEAK_HALLWAY" in groups or "STRONG_HALLWAY" in groups
     )
+    boss_evidence = isinstance(groups, Mapping) and "BOSS" in groups
     rooms = route.get("planned_rooms")
     if not isinstance(rooms, Sequence) or isinstance(rooms, (str, bytes)):
         segment = route.get("forced_segment")
         rooms = [row.get("room") for row in segment or () if isinstance(row, Mapping)]
     names = [_normalize(room) for room in rooms or ()]
-    encounters = {"monster", "m", "elite", "burningelite", "e"}
+    encounters = {"monster", "m", "elite", "burningelite", "e", "boss"}
     first_encounter = next(
         (index for index, name in enumerate(names) if name in encounters), len(names)
     )
@@ -199,6 +208,8 @@ def route_threat(
     for name in names[start:stop]:
         if name in {"elite", "burningelite", "e"}:
             families.append("ELITE")
+        elif boss_evidence and name == "boss":
+            families.append("BOSS")
         elif hallway_evidence and name in {"monster", "m"}:
             families.append("WEAK_HALLWAY" if hallways < weak else "STRONG_HALLWAY")
             hallways += 1

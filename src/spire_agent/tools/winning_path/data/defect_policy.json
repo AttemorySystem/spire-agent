@@ -1656,7 +1656,8 @@
       {
         "critical": [
           "IMMEDIATE_BLOCK",
-          "SCALING_DAMAGE"
+          "SCALING_DAMAGE",
+          "SINGLE_TARGET_FRONTLOAD"
         ],
         "encounter": "The Guardian"
       },

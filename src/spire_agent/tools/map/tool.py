@@ -371,18 +371,16 @@ def _needed_families(
 ) -> tuple[str, ...]:
     families = []
     for option in options:
-        for row in option.get("forced_segment", ()):
-            if not isinstance(row, Mapping):
-                continue
-            room = row.get("room")
+        for room in _policy_rooms(option):
             family = (
                 "BURNING_ELITE" if room == "E*"
                 else "ELITE" if room == "E"
+                else "BOSS" if room == "BOSS"
                 else None
             )
             if room == "M":
                 family = "HALLWAY" if act in {2, 3} else None
-            if room in {"M", "E", "E*"}:
+            if room in {"M", "E", "E*", "BOSS"}:
                 if family:
                     if family not in families:
                         families.append(family)
@@ -409,10 +407,7 @@ def _route_at_risk(
     hallway = 0
     evidence = readiness
     combat_evidence_used = False
-    for row in option.get("forced_segment", ()):
-        if not isinstance(row, Mapping):
-            continue
-        room = row.get("room")
+    for room in _policy_rooms(option):
         if room == "R":
             rested = option.get("rest_readiness")
             if isinstance(rested, Mapping):
@@ -424,12 +419,13 @@ def _route_at_risk(
         family = (
             "BURNING_ELITE" if room == "E*"
             else "ELITE" if room == "E"
+            else "BOSS" if room == "BOSS"
             else None
         )
         if act in {2, 3} and room == "M":
             family = "WEAK_HALLWAY" if hallway < weak else "STRONG_HALLWAY"
             hallway += 1
-        if room in {"M", "E", "E*"}:
+        if room in {"M", "E", "E*", "BOSS"}:
             if combat_evidence_used:
                 return True
             if family and _group_status(evidence, family) != "SUPPORTED":
@@ -448,12 +444,8 @@ def _group_status(readiness: Mapping[str, object], family: str) -> str:
 
 def _danger_key(
     option: Mapping[str, object], act: int, readiness: Mapping[str, object]
-) -> tuple[int, float, float, int, int, int]:
-    rooms = [
-        row.get("room")
-        for row in option.get("forced_segment", ())
-        if isinstance(row, Mapping)
-    ]
+) -> tuple[int, float, float, int, int, int, int]:
+    rooms = list(_policy_rooms(option))
     before_rest = rooms[: rooms.index("R")] if "R" in rooms else rooms
     evidence = readiness
     family = None
@@ -463,6 +455,9 @@ def _danger_key(
             evidence = rested if isinstance(rested, Mapping) else {}
         if room in {"E", "E*"}:
             family = "BURNING_ELITE" if room == "E*" else "ELITE"
+            break
+        if room == "BOSS":
+            family = "BOSS"
             break
         if room == "M":
             if act in {2, 3}:
@@ -476,14 +471,34 @@ def _danger_key(
     row = groups.get(family) if isinstance(groups, Mapping) else None
     survival = float(row.get("estimated_survival") or 0) if isinstance(row, Mapping) else 0
     end_hp = float(row.get("expected_end_hp_on_win") or 0) if isinstance(row, Mapping) else 0
+    status = str(row.get("status") or "UNAVAILABLE") if isinstance(row, Mapping) else "UNAVAILABLE"
     return (
-        sum(room in {"M", "E", "E*"} for room in before_rest),
+        {"SUPPORTED": 0, "INCONCLUSIVE": 1, "AT_RISK": 2}.get(status, 3),
         -survival,
         -end_hp,
+        sum(room in {"M", "E", "E*", "BOSS"} for room in before_rest),
         sum(room in {"E", "E*"} for room in before_rest),
         len(before_rest),
         int(option["choice_id"]),
     )
+
+
+def _policy_rooms(option: Mapping[str, object]) -> tuple[str, ...]:
+    rooms = tuple(
+        str(row.get("room") or "")
+        for row in option.get("forced_segment", ())
+        if isinstance(row, Mapping)
+    )
+    planned = option.get("planned_rooms")
+    if (
+        not any(room in {"M", "E", "E*"} for room in rooms)
+        and isinstance(planned, Sequence)
+        and not isinstance(planned, (str, bytes))
+        and planned
+        and str(planned[-1]).casefold() == "boss"
+    ):
+        return (*rooms, "BOSS")
+    return rooms
 
 
 def _compact_readiness(value: Mapping[str, object]) -> dict[str, object]:

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 import math
 import re
 
@@ -88,7 +88,11 @@ def forced_event_choice(
 
 
 def event_choice_policy(
-    state: GameState, shared: Mapping[str, object] | None = None
+    state: GameState,
+    shared: Mapping[str, object] | None = None,
+    encounter_evaluator: Callable[
+        [GameState, Mapping[str, Mapping[str, float]]], Mapping[str, object]
+    ] | None = None,
 ) -> dict[str, object] | None:
     """Constrain irreversible event trades using explicit run evidence."""
 
@@ -113,6 +117,30 @@ def event_choice_policy(
     capabilities = set(map(str, construction.get("capabilities") or ()))
     deficits = set(map(str, construction.get("deficits") or ()))
     rule = event_rule(state)
+    if rule == "masked_bandits":
+        evidence = (
+            encounter_evaluator(
+                state, {"MASKED_BANDITS": {"MASKED_BANDITS_EVENT": 1.0}}
+            )
+            if encounter_evaluator is not None
+            else {}
+        )
+        group = (evidence.get("groups") or {}).get("MASKED_BANDITS")
+        group = group if isinstance(group, Mapping) else {"status": "UNAVAILABLE"}
+        fight = 1 if choice_count > 1 else None
+        legal = tuple(
+            index
+            for index in range(choice_count)
+            if index != fight or group.get("status") == "SUPPORTED"
+        )
+        return policy(
+            legal,
+            "OPTIONAL_COMBAT_REVIEW",
+            "fight only when exact no-potion combat evidence supports the risk",
+            encounter="MASKED_BANDITS_EVENT",
+            fight_choice_id=fight,
+            readiness=dict(group),
+        )
     if rule == "mind_bloom":
         awake = 1 if choice_count > 1 else None
         floor = int(_number(state.facts.get("floor")))

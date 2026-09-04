@@ -239,6 +239,14 @@ class ConcreteMapAgentTests(unittest.TestCase):
             {"groups": {"ELITE": {"status": "SUPPORTED"}}},
         ))
 
+    def test_forced_rest_then_boss_requests_boss_readiness(self):
+        option = {
+            "forced_segment": ({"room": "R"},),
+            "planned_rooms": ("Rest", "Boss"),
+        }
+
+        self.assertEqual(_needed_families(1, (option,)), ("BOSS",))
+
     def test_act_one_hallway_does_not_hide_a_later_forced_elite(self):
         options = ({"forced_segment": ({"room": "M"}, {"room": "E"})},)
         self.assertEqual(_needed_families(1, options), ("ELITE",))
@@ -367,6 +375,44 @@ class ConcreteMapAgentTests(unittest.TestCase):
         self.assertEqual(decision.command, "choose 1")
         self.assertEqual(decision.source, "map.run_policy")
         self.assertEqual(llm.requests, [])
+
+    def test_supported_first_fight_beats_shorter_unavailable_route(self):
+        class Evidence:
+            def evaluate(self, state, families):
+                return {
+                    "status": "AVAILABLE",
+                    "weak_hallways_remaining": 1,
+                    "groups": {
+                        "WEAK_HALLWAY": {
+                            "status": "SUPPORTED",
+                            "estimated_survival": 0.90,
+                            "expected_end_hp_on_win": 30,
+                        },
+                        "BURNING_ELITE": {"status": "UNAVAILABLE"},
+                    },
+                }
+
+        base = map_state(
+            choices=("x=0", "x=1"),
+            current_node={"x": 3, "y": 5},
+            nodes=[
+                {"x": 0, "y": 6, "symbol": "E", "is_burning": True,
+                 "children": [{"x": 3, "y": 16}]},
+                {"x": 1, "y": 6, "symbol": "M", "children": [{"x": 1, "y": 7}]},
+                {"x": 1, "y": 7, "symbol": "E", "children": [{"x": 3, "y": 16}]},
+            ],
+        )
+        state = GameState(
+            base.owner_hint, base.scope_id, base.screen,
+            facts={**base.facts, "act": 2, "floor": 24, "current_hp": 16},
+        )
+
+        decision = compose_map_agent(
+            DefaultMapTool(FakeLLM({}), encounter_readiness=Evidence())
+        ).decide(request(state))
+
+        self.assertEqual(decision.command, "choose 1")
+        self.assertEqual(decision.source, "map.run_policy")
 
     def test_healed_readiness_can_allow_an_elite_after_a_rest(self):
         class HpAware:

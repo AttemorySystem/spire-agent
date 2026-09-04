@@ -160,6 +160,42 @@ class DefectAgentTests(unittest.TestCase):
             review["candidates"][0]["template"]["route_id"], "focus_frost"
         )
 
+    def test_early_frontload_need_uses_expert_pairwise_ranking(self):
+        current = state()
+        facts = {
+            **current.facts,
+            "act_boss": "The Guardian",
+            "deck": (*current.facts["deck"], {"name": "Creative AI"}),
+        }
+        details = {
+            **current.screen.details,
+            "cards": (
+                {"name": "Ball Lightning"},
+                {"name": "Leap"},
+                {"name": "Darkness"},
+            ),
+        }
+        current = GameState(
+            current.owner_hint,
+            current.scope_id,
+            ScreenState(
+                "CARD_REWARD",
+                commands=("choose", "skip"),
+                choices=("Ball Lightning", "Leap", "Darkness"),
+                details=details,
+            ),
+            facts=facts,
+        )
+
+        review = WinningPathCardPicker("DEFECT").review(request(current))
+
+        self.assertEqual(review["command"], "choose 0")
+        self.assertEqual(review["policy"], "TRANSITION_NEED")
+        self.assertEqual(
+            review["candidates"][0]["transition"]["needs"],
+            ["SINGLE_TARGET_FRONTLOAD"],
+        )
+
     def test_defect_uses_expert_supported_artifact_focus_module(self):
         current = state()
         facts = {

@@ -485,6 +485,33 @@ class BuildAgentTests(unittest.TestCase):
         self.assertEqual(decision.command, "choose 1")
         self.assertEqual(decision.source, "build.llm")
 
+    def test_rest_is_forced_when_healing_improves_boss_survival_status(self):
+        state = build_state(
+            "REST",
+            choices=("rest", "smith"),
+            facts={"current_hp": 20, "max_hp": 70, "act_boss": "Hexaghost"},
+        )
+        shared = {
+            "run_route": {
+                "planned_rooms": ("Rest", "Boss"),
+                "encounter_readiness": {
+                    "entry_hp": 20,
+                    "groups": {"BOSS": {"status": "AT_RISK"}},
+                },
+                "rest_readiness": {
+                    "entry_hp": 41,
+                    "groups": {"BOSS": {"status": "INCONCLUSIVE"}},
+                },
+            }
+        }
+
+        decision = create_build_agent(FakeLLM([])).decide(
+            request(state, shared=shared)
+        )
+
+        self.assertEqual(decision.command, "choose 0")
+        self.assertEqual(decision.source, "build.survival_policy")
+
     def test_route_readiness_is_invalidated_after_battle_state_changes(self):
         initial = build_state("EVENT")
         route = {
@@ -1034,6 +1061,25 @@ class BuildAgentTests(unittest.TestCase):
 
         self.assertEqual(selected.command, "choose 1")
 
+    def test_upgrade_continuation_matches_the_unupgraded_grid_card(self):
+        state = build_state(
+            "GRID", choices=("Defend",), details={"grid_operation": "UPGRADE"}
+        )
+        continuation = Continuation(
+            AgentKind.BUILD,
+            "build_flow",
+            state.scope_id,
+            expected_screens=("GRID", "HAND_SELECT"),
+            data={"flow": "selection", "targets": ("Defend+",)},
+        )
+
+        selected = create_build_agent(FakeLLM([])).decide(
+            request(state, continuation)
+        )
+
+        self.assertEqual(selected.command, "choose 0")
+        self.assertEqual(selected.source, "build.selection")
+
     def test_missing_selection_target_uses_the_visible_grid(self):
         llm = FakeLLM([response(choice_id=0)])
         state = build_state("GRID", choices=("Strike", "Defend"))
@@ -1197,6 +1243,42 @@ class BuildAgentTests(unittest.TestCase):
         self.assertEqual(decision.command, "choose 0")
         self.assertEqual(decision.source, "build.llm")
         self.assertNotIn("choice_policy", prompt_payload(llm.requests[0]))
+
+    def test_masked_bandits_requires_supported_simulation_to_fight(self):
+        state = build_state(
+            "EVENT",
+            choices=("pay", "fight!"),
+            details={"event_id": "Masked Bandits"},
+        )
+
+        for status in ("AT_RISK", "INCONCLUSIVE", "UNAVAILABLE"):
+            with self.subTest(status=status):
+                policy = build_choice_policy(
+                    request(state),
+                    lambda state, groups, status=status: {
+                        "groups": {"MASKED_BANDITS": {"status": status}}
+                    },
+                )
+                self.assertEqual(policy["legal_choice_ids"], (0,))
+                self.assertEqual(policy["classification"], "OPTIONAL_COMBAT_REVIEW")
+        self.assertEqual(
+            build_choice_policy(request(state))["legal_choice_ids"], (0,)
+        )
+
+    def test_masked_bandits_keeps_fight_when_simulation_is_supported(self):
+        state = build_state(
+            "EVENT",
+            choices=("pay", "fight!"),
+            details={"event_id": "Masked Bandits"},
+        )
+        policy = build_choice_policy(
+            request(state),
+            lambda state, groups: {
+                "groups": {"MASKED_BANDITS": {"status": "SUPPORTED"}}
+            },
+        )
+
+        self.assertEqual(policy["legal_choice_ids"], (0, 1))
 
     def test_apparition_capabilities_are_non_binding_evidence(self):
         cases = (

@@ -7,6 +7,7 @@ import unittest
 
 from spire_agent.contracts import AgentKind, GameState, ScreenState
 from spire_agent.tools.map.readiness import (
+    EncounterReadiness,
     _fingerprint,
     _group_summary,
     _groups,
@@ -149,6 +150,95 @@ class EncounterReadinessTests(unittest.TestCase):
             set(_groups(2, families=("HALLWAY",), weak_hallways_remaining=0)),
             {"STRONG_HALLWAY"},
         )
+
+    def test_burning_elite_unavailable_does_not_invoke_the_binary(self):
+        state = GameState(
+            AgentKind.MAP,
+            "test",
+            ScreenState("MAP"),
+            facts={
+                "seed": 0, "ascension_level": 20, "act": 2, "floor": 24,
+                "current_hp": 15, "max_hp": 71, "gold": 0,
+                "class": "DEFECT", "act_boss": "Champ",
+                "deck": ({"name": "Strike"},), "relics": (), "potions": (),
+            },
+        )
+
+        result = EncounterReadiness("/missing/binary", object()).evaluate(
+            state, ("BURNING_ELITE",)
+        )
+
+        self.assertEqual(result["status"], "AVAILABLE")
+        self.assertEqual(result["groups"]["BURNING_ELITE"]["status"], "UNAVAILABLE")
+
+    def test_boss_group_uses_the_exact_act_boss(self):
+        self.assertEqual(
+            _groups(1, families=("BOSS",), boss="Hexaghost"),
+            {"BOSS": {"Hexaghost": 1.0}},
+        )
+
+    def test_act_three_boss_readiness_is_unavailable(self):
+        self.assertEqual(
+            _groups(3, families=("BOSS",), boss="Time Eater"),
+            {"BOSS": {}},
+        )
+        state = GameState(
+            AgentKind.MAP,
+            "test",
+            ScreenState("MAP"),
+            facts={
+                "seed": 0, "ascension_level": 20, "act": 3, "floor": 49,
+                "current_hp": 40, "max_hp": 71, "gold": 0,
+                "class": "DEFECT", "act_boss": "Time Eater",
+                "deck": ({"name": "Strike"},), "relics": (), "potions": (),
+            },
+        )
+
+        result = EncounterReadiness("/missing/binary", object()).evaluate(
+            state, ("BOSS",)
+        )
+
+        self.assertEqual(result["groups"]["BOSS"]["status"], "UNAVAILABLE")
+
+    def test_explicit_empty_groups_do_not_restore_route_defaults(self):
+        state = GameState(
+            AgentKind.MAP,
+            "test",
+            ScreenState("MAP"),
+            facts={
+                "seed": 0, "ascension_level": 20, "act": 2, "floor": 24,
+                "current_hp": 15, "max_hp": 71, "gold": 0,
+                "class": "DEFECT", "act_boss": "Champ",
+                "deck": ({"name": "Strike"},), "relics": (), "potions": (),
+            },
+        )
+
+        result = EncounterReadiness("/missing/binary", object()).evaluate(
+            state, groups={}
+        )
+
+        self.assertEqual(result["status"], "AVAILABLE")
+        self.assertEqual(result["groups"], {})
+
+    def test_explicit_encounter_groups_bypass_route_distributions(self):
+        state = GameState(
+            AgentKind.BUILD,
+            "test",
+            ScreenState("EVENT"),
+            facts={
+                "seed": 0, "ascension_level": 20, "act": 4, "floor": 50,
+                "current_hp": 40, "max_hp": 70, "gold": 200,
+                "class": "DEFECT", "deck": ({"name": "Strike"},),
+                "relics": (), "potions": (),
+            },
+        )
+        result = EncounterReadiness("/missing/binary", object()).evaluate(
+            state,
+            groups={"EVENT": {"MASKED_BANDITS_EVENT": 1.0}},
+        )
+
+        self.assertEqual(result["status"], "UNAVAILABLE")
+        self.assertIn("/missing/binary", result["reason"])
 
     def test_cache_fingerprint_includes_requested_encounter_groups(self):
         spec = {"game_state": {"seed": 1}}

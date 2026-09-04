@@ -40,6 +40,8 @@ Smith 只能选择牌组中 count 大于 upgrades 的卡牌；不得再次选择
 更后面的成长。
 Act 1 Boss 为 Hexaghost 时，缺失 HP 本身不是 Rest 的理由：Divider 会随入场 HP 提高伤害；
 只要牌组能活过开局，就优先选择永久成长。
+若存在 encounter_readiness 和 rest_readiness，必须比较其中明确的 Boss 生存率与终局 HP
+证据；只有状态为 SUPPORTED 时，才能声称当前牌组已经证明可以存活。
 """
 
 [shop]

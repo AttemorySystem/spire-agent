@@ -52,6 +52,9 @@ When the confirmed route goes directly from this Rest to a Boss, rank upgrades
 by their concrete marginal impact in that fight rather than speculative later value.
 Against Act 1 Hexaghost, missing HP alone is not a reason to Rest: Divider scales
 with battle-entry HP, so prefer permanent growth when the deck survives the opening.
+When encounter_readiness and rest_readiness are present, compare their explicit
+Boss survival and ending-HP evidence. Never claim survival is established unless
+the evidence status is SUPPORTED.
 """
 
 [shop]

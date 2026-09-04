@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import argparse
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import asdict
 import os
 from pathlib import Path
@@ -23,7 +23,7 @@ from spire_agent.configuration import (
     load_runtime_config,
 )
 from spire_agent.context import GameContext
-from spire_agent.contracts import ContextEntry
+from spire_agent.contracts import ContextEntry, DecisionRequest
 from spire_agent.extensions import (
     CardChoiceRecorder,
     LiveOnlyObserver,
@@ -90,6 +90,9 @@ def runtime_registry(
     build_implementation: str = "winning_path",
     combat_implementation: str = "mcts",
     character: str = "IRONCLAD",
+    choice_policy: Callable[
+        [DecisionRequest], Mapping[str, object] | None
+    ] = build_choice_policy,
 ) -> SubAgentRegistry:
     if map_implementation != "llm":
         raise AgentConfigError(f"cannot compose map agent {map_implementation!r}")
@@ -101,7 +104,7 @@ def runtime_registry(
             llm,
             create_card_picker(character),
             prompt_language=prompt_language,
-            choice_policy=build_choice_policy,
+            choice_policy=choice_policy,
         )
     else:
         raise AgentConfigError(f"cannot compose build agent {build_implementation!r}")
@@ -202,11 +205,8 @@ def run(
         model=config.llm_model,
         stream_event=hud_observer.on_llm_event,
     )
-    map_tool = DefaultMapTool(
-        llm,
-        config.prompt_language,
-        EncounterReadiness(card_eval_binary, run_directory),
-    )
+    readiness = EncounterReadiness(card_eval_binary, run_directory)
+    map_tool = DefaultMapTool(llm, config.prompt_language, readiness)
     combat_tool = (
         DefaultCombatTool(
             CombatMCTS(
@@ -302,6 +302,10 @@ def run(
             build_implementation=config.build,
             combat_implementation=config.combat,
             character=character,
+            choice_policy=lambda request: build_choice_policy(
+                request,
+                lambda state, groups: readiness.evaluate(state, groups=groups),
+            ),
         ),
     )
     if wrap_decisions is not None:

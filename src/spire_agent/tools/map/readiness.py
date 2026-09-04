@@ -80,13 +80,21 @@ class EncounterReadiness:
         self._cache: dict[str, dict[str, Any]] = {}
 
     def evaluate(
-        self, state: GameState, families: Sequence[str] | None = None
+        self,
+        state: GameState,
+        families: Sequence[str] | None = None,
+        *,
+        groups: Mapping[str, Mapping[str, float]] | None = None,
     ) -> dict[str, Any]:
         act = _integer(state.facts.get("act"))
-        if act not in _ELITES:
+        if act not in _ELITES and groups is None:
             return {"status": "NOT_APPLICABLE", "act": act}
         rooms, bottles, elites = _history(self.runs)
-        rotation = _elite_rotation(act, elites.get(act))
+        rotation = (
+            _elite_rotation(act, elites.get(act))
+            if act in _ELITES
+            else {"last_elite_if_known": None, "next_candidates_if_known": []}
+        )
         weak_remaining = max(
             0,
             2 - sum(room_act == act for room_act, _ in rooms) - int(
@@ -95,39 +103,43 @@ class EncounterReadiness:
                 and (act, _integer(state.facts.get("floor"))) not in rooms
             ),
         )
-        groups = _groups(
-            act,
-            rotation["last_elite_if_known"],
-            families=families,
-            weak_hallways_remaining=weak_remaining,
-        )
+        if groups is None:
+            groups = _groups(
+                act, rotation["last_elite_if_known"], families=families,
+                weak_hallways_remaining=weak_remaining,
+                boss=state.facts.get("act_boss"),
+            )
         try:
+            targets = tuple(name for group in groups.values() for name in group)
             spec = _spec(
                 state,
-                tuple(name for group in groups.values() for name in group),
+                targets,
                 bottles,
             )
             fingerprint = _fingerprint(spec, groups)
             if fingerprint in self._cache:
                 return {**self._cache[fingerprint], "cache_hit": True}
-            if not self.binary.is_file():
+            if targets and not self.binary.is_file():
                 raise FileNotFoundError(self.binary)
-            with tempfile.TemporaryDirectory(prefix="sts-encounter-") as directory:
-                path = Path(directory) / "input.json"
-                path.write_text(json.dumps(spec, separators=(",", ":")), "utf-8")
-                completed = subprocess.run(
-                    (
-                        str(self.binary), "--battle-eval", str(path),
-                        str(self.simulations), "0", str(self.worlds),
-                        str(self.max_time_ms), str(self.max_decisions),
-                    ),
-                    capture_output=True,
-                    text=True,
-                    timeout=120,
-                    check=False,
-                )
-            if completed.returncode:
-                raise RuntimeError(completed.stderr.strip())
+            raw = {}
+            if targets:
+                with tempfile.TemporaryDirectory(prefix="sts-encounter-") as directory:
+                    path = Path(directory) / "input.json"
+                    path.write_text(json.dumps(spec, separators=(",", ":")), "utf-8")
+                    completed = subprocess.run(
+                        (
+                            str(self.binary), "--battle-eval", str(path),
+                            str(self.simulations), "0", str(self.worlds),
+                            str(self.max_time_ms), str(self.max_decisions),
+                        ),
+                        capture_output=True,
+                        text=True,
+                        timeout=120,
+                        check=False,
+                    )
+                if completed.returncode:
+                    raise RuntimeError(completed.stderr.strip())
+                raw = json.loads(completed.stdout)
             result = {
                 "status": "AVAILABLE",
                 "act": act,
@@ -136,7 +148,7 @@ class EncounterReadiness:
                 "cache_hit": False,
                 "fingerprint": fingerprint,
                 "elite_rotation": rotation,
-                **_summarize(json.loads(completed.stdout), groups, self.minimum_survival),
+                **_summarize(raw, groups, self.minimum_survival),
             }
             if act in {2, 3}:
                 result["weak_hallways_remaining"] = weak_remaining
@@ -176,6 +188,7 @@ def _groups(
     *,
     families: Sequence[str] | None = None,
     weak_hallways_remaining: int = 0,
+    boss: object = None,
 ) -> dict[str, Mapping[str, float]]:
     possible = (
         tuple(name for name in _ELITES[act] if name != last_elite)
@@ -202,6 +215,9 @@ def _groups(
         # An empty group is explicit unavailable evidence, never an ordinary
         # elite result silently reused for the burning elite.
         selected["BURNING_ELITE"] = {}
+    if "BOSS" in requested:
+        name = str(boss or "").strip()
+        selected["BOSS"] = {name: 1.0} if act in (1, 2) and name else {}
     return selected
 
 

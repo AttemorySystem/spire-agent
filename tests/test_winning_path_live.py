@@ -94,7 +94,7 @@ class WinningPathLiveTests(unittest.TestCase):
         )
 
         self.assertEqual(result["command"], "choose 2")
-        self.assertEqual(result["policy"], "EXPERT_EXPERIENCE")
+        self.assertEqual(result["policy"], "TRANSITION_NEED")
         self.assertEqual(result["candidates"][1]["transition"]["level"], "NONE")
 
     def test_defect_consume_requires_nonstarter_orb_supply(self):

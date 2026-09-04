@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 import json
 import re
 from typing import Any
@@ -46,11 +46,16 @@ BUILD_ACTION_SCHEMA = {
 }
 
 
-def build_choice_policy(request: DecisionRequest) -> dict[str, object] | None:
+def build_choice_policy(
+    request: DecisionRequest,
+    encounter_evaluator: Callable[
+        [GameState, Mapping[str, Mapping[str, float]]], Mapping[str, object]
+    ] | None = None,
+) -> dict[str, object] | None:
     """Combine independent non-card choice constraints for BuildAgent."""
 
     return (
-        event_choice_policy(request.state, request.shared)
+        event_choice_policy(request.state, request.shared, encounter_evaluator)
         or boss_relic_policy(request)
         or rest_policy(request)
     )
@@ -358,6 +363,11 @@ def _continue_selection(request: DecisionRequest) -> Decision | None:
             continuation=ContinuationChange.clear(),
         )
     wanted = _normalize_name(targets[0])
+    if (
+        str(state.screen.details.get("grid_operation") or "").upper() == "UPGRADE"
+        and wanted.endswith("+")
+    ):
+        wanted = wanted.removesuffix("+")
     choices = tuple(
         _normalize_name(_choice_label(choice)) for choice in state.screen.choices
     )
