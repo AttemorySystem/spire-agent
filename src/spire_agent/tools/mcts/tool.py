@@ -89,6 +89,17 @@ class DefaultCombatTool(CombatTool):
         if not is_mcts_state(state):
             return None
         if (
+            generated_task(state) is not None
+            and "choose" not in state.screen.commands
+            and "confirm" in state.screen.commands
+        ):
+            return Decision(
+                "confirm",
+                "combat.selection_complete",
+                "confirm completed combat card selection",
+                continuation=_clear_stale(request),
+            )
+        if (
             state.screen.type == "CARD_REWARD"
             and generated_task(state) is not None
             and len(state.screen.choices) == 1

@@ -113,6 +113,25 @@ class CombatAgentTests(unittest.TestCase):
         self.assertEqual(decision.source, "combat.mcts")
         self.assertEqual(search.states, [state])
 
+    def test_completed_recycle_selection_confirms_without_research(self):
+        search = FakeSearch(MCTSResult("choose 7", None, {}))
+        state = combat_state(
+            screen="HAND_SELECT",
+            commands=("confirm",),
+            current_action="RecycleAction",
+            details={
+                "max_cards": 1,
+                "selected": [{"id": "Wound", "name": "Wound"}],
+                "hand": [{"id": "Defend_B", "name": "Defend"}],
+            },
+        )
+
+        decision = create_combat_agent(search).decide(request(state))
+
+        self.assertEqual(decision.command, "confirm")
+        self.assertEqual(decision.source, "combat.selection_complete")
+        self.assertEqual(search.states, [])
+
     def test_multi_card_follow_up_executes_one_confirmed_step_at_a_time(self):
         plan = {
             "kind": "card_selection",
